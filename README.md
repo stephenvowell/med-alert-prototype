@@ -74,7 +74,17 @@ pio device monitor
 Windows: if `pio` is missing from PATH, use e.g.  
 `%USERPROFILE%\.platformio\penv\Scripts\pio.exe run -t upload`.
 
-**Upload tips:** Use the **USB serial / USB-JTAG** COM port (not a Bluetooth COM). Set `upload_port` / `monitor_port` in `platformio.ini` if auto-detect is wrong. For stubborn boots: hold **BOOT**, tap **RST**, release **BOOT**, then upload within a few seconds. On Windows, esptool’s Unicode progress bar is disabled via `pio_no_progress.py` to avoid console encoding crashes.
+**IDE / red squiggles (`Arduino.h` not found):** The build is fine; the editor needs a **compilation database**.
+
+1. From this folder, run (use the full path if `pio` is not on your PATH):
+
+   `"%USERPROFILE%\.platformio\penv\Scripts\pio.exe" run -t compiledb`
+
+2. That creates **`compile_commands.json`** in the project root (gitignored; large, machine-specific).
+
+3. **Reload the window** (Cursor: *Developer: Reload Window*) so **clangd** / the C++ extension picks it up.
+
+This repo includes **`.vscode/c_cpp_properties.json`** (points at `compile_commands.json`), **`.clangd`** (uses that DB and whitelists the RISC-V GCC query driver), and **`.vscode/settings.json`** for clangd’s compile-commands dir.
 
 ---
 
