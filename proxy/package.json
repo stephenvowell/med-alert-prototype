@@ -1,0 +1,14 @@
+{
+  "name": "med-alert-twilio-proxy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Optional relay: device sends opaque token + payload; server holds Twilio secrets.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "twilio": "^5.3.0"
+  }
+}
