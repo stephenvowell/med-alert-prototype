@@ -2,7 +2,11 @@
 
 Firmware for a **bedside-style vitals watcher** built from a **Seeed XIAO ESP32-C6**, **MR60BHA2** 60 GHz mmWave radar, and a **NeoPixel** ring. When heart rate and breathing rate stay below configurable limits for a debounced period, the device raises a **local alarm** (flashing LEDs) and can send **staged SMS** via **Twilio** to a primary and a secondary contact.
 
+**Purpose of this repository:** A **working prototype** to **demonstrate** the product vision—sensing, alarms, configuration, and remote notification—for **fundraising** and conversations toward **bringing a future product to market**. Pitches and decks should still distinguish **“investable prototype”** from **cleared / commercial medical hardware** (see v2 roadmap).
+
 > **Not a medical device.** Not cleared for diagnosis or treatment. For **lab / demo / engineering evaluation** only, with appropriate clinical and legal oversight.
+
+**Future direction (draft):** A v2 program outline—cellular backup, monitored escalation, regulatory path—is in [`docs/V2-ROADMAP.md`](docs/V2-ROADMAP.md). Edit that file with your counsel and partners.
 
 ---
 
@@ -14,7 +18,7 @@ Firmware for a **bedside-style vitals watcher** built from a **Seeed XIAO ESP32-
 | **MR60BHA2** (60 GHz mmWave, Seeed SKU **114993387**) | Non-contact sensing: estimated **heart rate**, **breathing rate**, **distance**, human presence — UART to the XIAO @ **115200** (same wiring as Seeed’s MR60BHA2 + XIAO examples) |
 | **Adafruit NeoPixel 16×5050 ring** (PID **1463**) | Local alarm: **red flash** during alert phases (pin **D10** by default) |
 
-Together this forms a **standalone gadget**: it joins your Wi‑Fi (or starts a setup hotspot), serves a small **captive portal** for first-time configuration, then runs **continuously** — radar polling, alarm logic, optional SMS, and a **LAN dashboard** for status and cancel.
+Together this forms a **standalone device**: it joins your Wi‑Fi (or starts a setup hotspot), serves a small **captive portal** for first-time configuration, then runs **continuously** — radar polling, alarm logic, optional SMS, and a **LAN dashboard** for status and cancel.
 
 ---
 
@@ -128,6 +132,7 @@ To avoid storing Twilio secrets on-device, use the small Node relay in [`proxy/R
 | `scripts/patch_compile_commands.py` | Post-link: rewrite `compile_commands.json` driver to absolute `riscv32-esp-elf-g++.exe` (helps clangd if you re-enable it) |
 | `pio_no_progress.py` | PlatformIO post-hook: inserts esptool `--no-progress` after `write-flash` (Windows-friendly) |
 | `proxy/` | Optional Twilio relay |
+| `docs/V2-ROADMAP.md` | Draft v2 direction (cellular, monitoring, regulatory) — edit with counsel / partners |
 
 ---
 
