@@ -136,7 +136,7 @@ The device will try to join this network **after** you save and reboot.
 | Field | What to enter |
 |-------|----------------|
 | **Twilio Account SID** | From Twilio Console (starts with `AC…`). |
-| **Twilio Auth Token** | Secret token from Twilio Console — **anyone with this can send SMS on your bill**. |
+| **Twilio Auth Token** | Secret token from Twilio Console — **anyone with this can send SMS on your bill**. Use **Show Wi-Fi password and Twilio Auth Token** to reveal typing (uncheck before handing the phone to someone else). |
 | **Twilio From (E.164)** | Your Twilio-owned number, e.g. `+15551234567`. Must be SMS-capable on your account. |
 
 ### SMS recipients
@@ -146,7 +146,7 @@ The device will try to join this network **after** you save and reboot.
 | **Primary SMS (E.164)** | **First** number to receive an SMS when the alarm reaches that stage (see [section 9](#9-what-happens-when-an-alarm-runs)). |
 | **Family SMS (E.164)** | **Second** number. The label “Family” is only a name — it is simply the **second** slot in time order. |
 
-**E.164** means: leading `+`, country code, full number, **no spaces** in the saved value (spaces in the UI may be stripped depending on browser — avoid them).
+**E.164** means: leading `+`, country code, full number. The device **normalizes on save**: spaces, dashes, and parentheses are ignored; if you omit `+`, **10-digit US numbers** become `+1` plus those digits; **11 digits starting with 1** become `+` plus all digits; other digit-only lengths (8–15) get a single leading `+`. You may still type full E.164 with `+` (recommended for non-US).
 
 ### Medical / location template
 

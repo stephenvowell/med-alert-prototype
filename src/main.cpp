@@ -235,13 +235,14 @@ static const char kPortalPage[] = R"HTML(
 </head>
 <body>
 <h1>MedAlert setup</h1>
-<p class="note">WiFi joins your home network. SMS uses Twilio over HTTPS. Do not use real 911 until legally cleared—use Twilio test numbers.</p>
+<p class="note">WiFi joins your home network. SMS uses Twilio over HTTPS. Do not use real 911 until legally cleared—use Twilio test numbers. Phone numbers: you may enter 10 digits (US); a leading <strong>+</strong> and country code are added when you save.</p>
 <form method="POST" action="/save">
 <label>WiFi SSID<input name="wifi_ssid" autocomplete="username" required/></label>
-<label>WiFi password<input name="wifi_pass" type="password" autocomplete="current-password"/></label>
+<label>WiFi password<input id="fld_wifi_pass" name="wifi_pass" type="password" autocomplete="current-password"/></label>
 <hr/>
 <label>Twilio Account SID<input name="tw_sid" inputmode="text" autocapitalize="none" required/></label>
-<label>Twilio Auth Token<input name="tw_token" type="password" required/></label>
+<label>Twilio Auth Token<input id="fld_tw_token" name="tw_token" type="password" required/></label>
+<label class="chk"><input type="checkbox" id="show_pw"/><span>Show Wi-Fi password and Twilio Auth Token</span></label>
 <label>Twilio From (E.164)<input name="tw_from" placeholder="+15551234567" inputmode="tel" required/></label>
 <label>Primary SMS (E.164 — test or monitored)<input name="sms_pri" placeholder="+15005550006" inputmode="tel" required/></label>
 <label>Family SMS (E.164)<input name="sms_fam" inputmode="tel" required/></label>
@@ -255,6 +256,13 @@ static const char kPortalPage[] = R"HTML(
 <label>NeoPixel brightness (0-255)<input name="neo_bri" type="number" value="24" inputmode="numeric"/></label>
 <button type="submit">Save &amp; reboot</button>
 </form>
+<script>
+document.getElementById('show_pw').addEventListener('change',function(){
+  var t=this.checked?'text':'password';
+  document.getElementById('fld_wifi_pass').type=t;
+  document.getElementById('fld_tw_token').type=t;
+});
+</script>
 </body>
 </html>
 )HTML";
@@ -396,6 +404,39 @@ document.getElementById('kill').onclick=async()=>{
 
 static void handlePortalRoot() { g_server.send(200, "text/html", kPortalPage); }
 
+// Strip spaces/dashes/parens; ensure leading + for Twilio E.164.
+// 10 digits only -> +1… (NANP). 11 digits starting with 1 -> +…. Other digit runs -> +digits.
+static String normalizeE164Phone(const String& raw) {
+  String digits;
+  bool saw_plus = false;
+  for (size_t i = 0; i < raw.length(); ++i) {
+    const char c = raw[i];
+    if (c == '+' && digits.length() == 0 && !saw_plus) {
+      saw_plus = true;
+      continue;
+    }
+    if (c >= '0' && c <= '9') {
+      digits += c;
+    }
+  }
+  if (digits.length() == 0) {
+    return raw;
+  }
+  if (saw_plus) {
+    return String("+") + digits;
+  }
+  if (digits.length() == 10) {
+    return String("+1") + digits;
+  }
+  if (digits.length() == 11 && digits[0] == '1') {
+    return String("+") + digits;
+  }
+  if (digits.length() >= 8 && digits.length() <= 15) {
+    return String("+") + digits;
+  }
+  return String("+") + digits;
+}
+
 // POST /save from captive portal: validate bounds, persist NVS, then reboot into STA.
 static void handlePortalSave() {
   DeviceConfig c;
@@ -403,9 +444,9 @@ static void handlePortalSave() {
   c.wifi_password = g_server.arg("wifi_pass");
   c.twilio_account_sid = g_server.arg("tw_sid");
   c.twilio_auth_token = g_server.arg("tw_token");
-  c.twilio_from_e164 = g_server.arg("tw_from");
-  c.sms_primary_e164 = g_server.arg("sms_pri");
-  c.sms_family_e164 = g_server.arg("sms_fam");
+  c.twilio_from_e164 = normalizeE164Phone(g_server.arg("tw_from"));
+  c.sms_primary_e164 = normalizeE164Phone(g_server.arg("sms_pri"));
+  c.sms_family_e164 = normalizeE164Phone(g_server.arg("sms_fam"));
   c.medical_template = g_server.arg("med_tpl");
   c.thr_heart_bpm = g_server.arg("thr_hr").toFloat();
   c.thr_breath_rpm = g_server.arg("thr_br").toFloat();

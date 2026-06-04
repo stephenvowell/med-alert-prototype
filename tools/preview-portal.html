@@ -102,13 +102,14 @@
   <strong>Local preview</strong> — matches firmware <code>kPortalPage</code>. <strong>Save &amp; reboot</strong> only works on the device at <code>http://192.168.4.1</code> (join <code>MedAlert-Setup</code> first). From this file, submit will not save.
 </div>
 <h1>MedAlert setup</h1>
-<p class="note">WiFi joins your home network. SMS uses Twilio over HTTPS. Do not use real 911 until legally cleared—use Twilio test numbers.</p>
+<p class="note">WiFi joins your home network. SMS uses Twilio over HTTPS. Do not use real 911 until legally cleared—use Twilio test numbers. Phone numbers: you may enter 10 digits (US); a leading <strong>+</strong> and country code are added when you save.</p>
 <form method="POST" action="/save">
 <label>WiFi SSID<input name="wifi_ssid" autocomplete="username" required/></label>
-<label>WiFi password<input name="wifi_pass" type="password" autocomplete="current-password"/></label>
+<label>WiFi password<input id="fld_wifi_pass" name="wifi_pass" type="password" autocomplete="current-password"/></label>
 <hr/>
 <label>Twilio Account SID<input name="tw_sid" inputmode="text" autocapitalize="none" required/></label>
-<label>Twilio Auth Token<input name="tw_token" type="password" required/></label>
+<label>Twilio Auth Token<input id="fld_tw_token" name="tw_token" type="password" required/></label>
+<label class="chk"><input type="checkbox" id="show_pw"/><span>Show Wi-Fi password and Twilio Auth Token</span></label>
 <label>Twilio From (E.164)<input name="tw_from" placeholder="+15551234567" inputmode="tel" required/></label>
 <label>Primary SMS (E.164 — test or monitored)<input name="sms_pri" placeholder="+15005550006" inputmode="tel" required/></label>
 <label>Family SMS (E.164)<input name="sms_fam" inputmode="tel" required/></label>
@@ -122,5 +123,12 @@
 <label>NeoPixel brightness (0-255)<input name="neo_bri" type="number" value="24" inputmode="numeric"/></label>
 <button type="submit">Save &amp; reboot</button>
 </form>
+<script>
+document.getElementById('show_pw').addEventListener('change',function(){
+  var t=this.checked?'text':'password';
+  document.getElementById('fld_wifi_pass').type=t;
+  document.getElementById('fld_tw_token').type=t;
+});
+</script>
 </body>
 </html>
