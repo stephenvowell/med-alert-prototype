@@ -144,42 +144,235 @@ static void sendJsonStatus() {
 }
 
 static const char kPortalPage[] = R"HTML(
-<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>MedAlert Setup</title><style>body{font-family:system-ui,sans-serif;margin:16px;max-width:520px}
-label{display:block;margin-top:10px;font-weight:600}input,textarea{width:100%;box-sizing:border-box;padding:8px}
-button{margin-top:16px;padding:10px 16px}.note{font-size:12px;color:#444;margin-top:8px}</style></head><body>
-<h1>MedAlert setup</h1><p class="note">WiFi joins your home network. SMS uses Twilio over HTTPS. Do not use real 911 until legally cleared—use Twilio test numbers.</p>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="color-scheme" content="light dark"/>
+<title>MedAlert Setup</title>
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --surface: #ffffff;
+    --text: #0f172a;
+    --muted: #475569;
+    --border: #e2e8f0;
+    --accent: #e3f2fd;
+    --primary: #1565c0;
+    --primary-press: #0d47a1;
+    --danger: #b71c1c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121826;
+      --surface: #1e293b;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --border: #334155;
+      --accent: #1e3a5f;
+      --primary: #42a5f5;
+      --primary-press: #1976d2;
+      --danger: #ef5350;
+    }
+  }
+  html { -webkit-text-size-adjust: 100%; background: var(--bg); }
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    color: var(--text);
+    padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+             max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    max-width: 36rem;
+    margin-inline: auto;
+    font-size: 1rem;
+    line-height: 1.45;
+    min-height: 100dvh;
+    touch-action: manipulation;
+  }
+  h1 {
+    font-size: 1.35rem;
+    margin: 0 0 0.5rem;
+    border-bottom: 3px solid var(--primary);
+    background: linear-gradient(var(--accent), transparent);
+    padding: 0.6rem 0.75rem 0.5rem;
+    margin-inline: -0.25rem;
+    border-radius: 10px 10px 0 0;
+  }
+  .note { font-size: 0.9rem; color: var(--muted); margin: 0.75rem 0 1rem; }
+  label { display: block; margin-top: 0.85rem; font-weight: 600; font-size: 0.9rem; color: var(--text); }
+  input, textarea {
+    width: 100%;
+    margin-top: 0.35rem;
+    padding: 0.65rem 0.75rem;
+    font-size: 16px;
+    min-height: 48px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text);
+  }
+  textarea { min-height: 6rem; resize: vertical; }
+  input[type="checkbox"] { width: auto; min-height: auto; margin-right: 0.5rem; vertical-align: middle; accent-color: var(--primary); }
+  .chk { display: flex; align-items: center; gap: 0.35rem; margin-top: 0.85rem; font-weight: 600; color: var(--text); }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+  button[type="submit"] {
+    width: 100%;
+    margin-top: 1.25rem;
+    padding: 0.85rem 1rem;
+    font-size: 1.05rem;
+    min-height: 48px;
+    border-radius: 9999px;
+    border: 0;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button[type="submit"]:active { background: var(--primary-press); }
+</style>
+</head>
+<body>
+<h1>MedAlert setup</h1>
+<p class="note">WiFi joins your home network. SMS uses Twilio over HTTPS. Do not use real 911 until legally cleared—use Twilio test numbers.</p>
 <form method="POST" action="/save">
-<label>WiFi SSID<input name="wifi_ssid" required/></label>
-<label>WiFi password<input name="wifi_pass" type="password"/></label>
-<hr/><label>Twilio Account SID<input name="tw_sid" required/></label>
+<label>WiFi SSID<input name="wifi_ssid" autocomplete="username" required/></label>
+<label>WiFi password<input name="wifi_pass" type="password" autocomplete="current-password"/></label>
+<hr/>
+<label>Twilio Account SID<input name="tw_sid" inputmode="text" autocapitalize="none" required/></label>
 <label>Twilio Auth Token<input name="tw_token" type="password" required/></label>
-<label>Twilio From (E.164)<input name="tw_from" placeholder="+15551234567" required/></label>
-<label>Primary SMS (E.164 — test or monitored)<input name="sms_pri" placeholder="+15005550006" required/></label>
-<label>Family SMS (E.164)<input name="sms_fam" required/></label>
+<label>Twilio From (E.164)<input name="tw_from" placeholder="+15551234567" inputmode="tel" required/></label>
+<label>Primary SMS (E.164 — test or monitored)<input name="sms_pri" placeholder="+15005550006" inputmode="tel" required/></label>
+<label>Family SMS (E.164)<input name="sms_fam" inputmode="tel" required/></label>
 <label>Medical / location template<textarea name="med_tpl" rows="4">Medical alert prototype. Verify before dispatch.</textarea></label>
-<hr/><label>Heart rate below (BPM)<input name="thr_hr" type="number" step="0.1" value="40"/></label>
-<label>Breath rate below (breaths/min)<input name="thr_br" type="number" step="0.1" value="6"/></label>
-<label>Debounce (ms)<input name="deb_ms" type="number" value="15000"/></label>
-<label>Max distance gate (m)<input name="dist_max" type="number" step="0.1" value="1.5"/></label>
-<label><input type="checkbox" name="dist_gate" checked/> Use distance gate</label>
-<label>NeoPixel brightness (0-255)<input name="neo_bri" type="number" value="24"/></label>
-<button type="submit">Save &amp; reboot</button></form></body></html>
+<hr/>
+<label>Heart rate below (BPM)<input name="thr_hr" type="number" step="0.1" value="40" inputmode="decimal"/></label>
+<label>Breath rate below (breaths/min)<input name="thr_br" type="number" step="0.1" value="6" inputmode="decimal"/></label>
+<label>Debounce (ms)<input name="deb_ms" type="number" value="15000" inputmode="numeric"/></label>
+<label>Max distance gate (m)<input name="dist_max" type="number" step="0.1" value="1.5" inputmode="decimal"/></label>
+<label class="chk"><input type="checkbox" name="dist_gate" checked/><span>Use distance gate</span></label>
+<label>NeoPixel brightness (0-255)<input name="neo_bri" type="number" value="24" inputmode="numeric"/></label>
+<button type="submit">Save &amp; reboot</button>
+</form>
+</body>
+</html>
 )HTML";
 
 static const char kDashPage[] = R"HTML(
-<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>MedAlert</title><style>body{font-family:system-ui,sans-serif;margin:16px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:560px}.card{border:1px solid #ccc;border-radius:8px;padding:12px}
-button{padding:10px 16px;margin-top:12px}</style></head><body>
-<h1>MedAlert</h1><div class="grid"><div class="card"><div>Heart (BPM)</div><div id="hr">--</div></div>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="color-scheme" content="light dark"/>
+<title>MedAlert</title>
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --surface: #ffffff;
+    --text: #0f172a;
+    --muted: #475569;
+    --border: #e2e8f0;
+    --accent: #e3f2fd;
+    --primary: #1565c0;
+    --danger: #b71c1c;
+    --danger-press: #7f1010;
+    --warn-text: #b71c1c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121826;
+      --surface: #1e293b;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --border: #334155;
+      --accent: #1e3a5f;
+      --primary: #42a5f5;
+      --danger: #ef5350;
+      --danger-press: #e53935;
+      --warn-text: #ffcdd2;
+    }
+  }
+  html { -webkit-text-size-adjust: 100%; background: var(--bg); }
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    color: var(--text);
+    padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+             max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    max-width: 40rem;
+    margin-inline: auto;
+    font-size: 1rem;
+    line-height: 1.45;
+    min-height: 100dvh;
+    touch-action: manipulation;
+  }
+  h1 {
+    font-size: 1.35rem;
+    margin: 0 0 0.75rem;
+    padding: 0.6rem 0.75rem 0.5rem;
+    border-radius: 10px 10px 0 0;
+    border-bottom: 3px solid var(--primary);
+    background: linear-gradient(var(--accent), transparent);
+    margin-inline: -0.25rem;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding-bottom: 14px;
+    margin-bottom: 10px;
+    border-bottom: 3px solid var(--primary);
+  }
+  @media (min-width: 480px) {
+    .grid { grid-template-columns: 1fr 1fr; }
+  }
+  .card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 14px 12px;
+    min-height: 5.5rem;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    .card { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
+  }
+  .card > div:first-child { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+  .card > div:last-child { font-size: 1.5rem; font-weight: 700; margin-top: 0.25rem; word-break: break-word; color: var(--text); }
+  .meta { font-size: 0.95rem; margin: 0.35rem 0; color: var(--text); }
+  #err { font-size: 0.9rem; word-break: break-word; color: var(--warn-text); min-height: 1.2em; }
+  #kill {
+    width: 100%;
+    max-width: 24rem;
+    margin-top: 1rem;
+    padding: 0.85rem 1rem;
+    font-size: 1.05rem;
+    min-height: 48px;
+    border-radius: 12px;
+    border: 0;
+    background: var(--danger);
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  #kill:active { background: var(--danger-press); }
+</style>
+</head>
+<body>
+<h1>MedAlert</h1>
+<div class="grid">
+<div class="card"><div>Heart (BPM)</div><div id="hr">--</div></div>
 <div class="card"><div>Breath (/min)</div><div id="br">--</div></div>
 <div class="card"><div>Distance (m)</div><div id="dist">--</div></div>
-<div class="card"><div>State</div><div id="st">--</div></div></div>
-<p>Primary SMS in <span id="tp">--</span>s · Family SMS in <span id="tf">--</span>s</p>
-<p>WiFi: <span id="wf">--</span></p>
-<p style="color:#a00" id="err"></p>
-<button id="kill">Cancel alert / clear LEDs</button>
+<div class="card"><div>State</div><div id="st">--</div></div>
+</div>
+<p class="meta">Primary SMS in <span id="tp">--</span>s · Family SMS in <span id="tf">--</span>s</p>
+<p class="meta">WiFi: <span id="wf">--</span></p>
+<p id="err"></p>
+<button type="button" id="kill">Cancel alert / clear LEDs</button>
 <script>
 async function poll(){
   const r=await fetch('/api/status');const j=await r.json();
@@ -196,7 +389,9 @@ setInterval(poll,500);poll();
 document.getElementById('kill').onclick=async()=>{
   await fetch('/api/alarm/cancel',{method:'POST'});poll();
 };
-</script></body></html>
+</script>
+</body>
+</html>
 )HTML";
 
 static void handlePortalRoot() { g_server.send(200, "text/html", kPortalPage); }

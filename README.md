@@ -8,6 +8,8 @@ Firmware for a **bedside-style vitals watcher** built from a **Seeed XIAO ESP32-
 
 **Future direction (draft):** A v2 program outline—cellular backup, monitored escalation, regulatory path—is in [`docs/V2-ROADMAP.md`](docs/V2-ROADMAP.md). Edit that file with your counsel and partners.
 
+**End-user instructions:** Step-by-step setup, form fields, dashboard, alarm timeline, and troubleshooting are in [`docs/USER-GUIDE.md`](docs/USER-GUIDE.md) (for caregivers, installers, and demos).
+
 ---
 
 ## What you are building (the device)
@@ -133,6 +135,7 @@ To avoid storing Twilio secrets on-device, use the small Node relay in [`proxy/R
 | `pio_no_progress.py` | PlatformIO post-hook: inserts esptool `--no-progress` after `write-flash` (Windows-friendly) |
 | `proxy/` | Optional Twilio relay |
 | `docs/V2-ROADMAP.md` | Draft v2 direction (cellular, monitoring, regulatory) — edit with counsel / partners |
+| `docs/USER-GUIDE.md` | Detailed operator / caregiver instructions (setup portal, dashboard, SMS behavior) |
 
 ---
 
