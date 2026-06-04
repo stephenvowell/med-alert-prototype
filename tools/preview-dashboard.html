@@ -20,6 +20,8 @@
     to_family_s: 0,
     wifi: "file-preview (mock)",
     last_sms_err: "",
+    sms_opt_in: true,
+    sms_opt_in_recorded_at: "2026-01-01T00:00:00.000Z",
   };
   const real = window.fetch.bind(window);
   window.fetch = function (input, init) {
@@ -152,6 +154,7 @@
 <div class="card"><div>State</div><div id="st">--</div></div>
 </div>
 <p class="meta">Primary SMS in <span id="tp">--</span>s · Family SMS in <span id="tf">--</span>s</p>
+<p class="meta">SMS consent (NVS): <span id="optin">--</span></p>
 <p class="meta">WiFi: <span id="wf">--</span></p>
 <p class="ver" id="fwver">Firmware file-preview · git mock · build 0</p>
 <p id="err"></p>
@@ -165,6 +168,8 @@ async function poll(){
   document.getElementById('st').textContent=j.state;
   document.getElementById('tp').textContent=j.to_primary_s||0;
   document.getElementById('tf').textContent=j.to_family_s||0;
+  var oi=document.getElementById('optin');
+  if(oi)oi.textContent=j.sms_opt_in?(j.sms_opt_in_recorded_at||'yes (no browser timestamp)'):'not recorded — SMS disabled';
   document.getElementById('wf').textContent=j.wifi;
   document.getElementById('err').textContent=j.last_sms_err||'';
   var fw=document.getElementById('fwver');

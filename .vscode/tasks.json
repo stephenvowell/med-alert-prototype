@@ -1,0 +1,63 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "PIO: Serial Monitor",
+      "type": "shell",
+      "command": "${env:USERPROFILE}\\.platformio\\penv\\Scripts\\pio.exe",
+      "args": ["device", "monitor"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      },
+      "detail": "Uses monitor_speed / monitor_port from platformio.ini. Stop with Ctrl+C."
+    },
+    {
+      "label": "Serial monitor — USB (no PlatformIO command needed)",
+      "type": "shell",
+      "command": "${env:USERPROFILE}\\.platformio\\penv\\Scripts\\pio.exe",
+      "args": ["device", "monitor"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      },
+      "detail": "Same as PIO: Serial Monitor; extra label so Run Task search finds it easily."
+    },
+    {
+      "label": "PIO: Upload firmware",
+      "type": "shell",
+      "command": "${env:USERPROFILE}\\.platformio\\penv\\Scripts\\pio.exe",
+      "args": ["run", "-t", "upload"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "PIO: Upload then Serial Monitor",
+      "dependsOn": ["PIO: Upload firmware", "PIO: Serial Monitor"],
+      "dependsOrder": "sequence",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      },
+      "detail": "Flash, then open monitor (same as PlatformIO Upload+Monitor when extension is installed)."
+    }
+  ]
+}

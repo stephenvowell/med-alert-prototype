@@ -1,5 +1,7 @@
 {
   "clangd.enable": false,
   "C_Cpp.default.compileCommands": "${workspaceFolder}/compile_commands.json",
-  "C_Cpp.intelliSenseEngine": "default"
+  "C_Cpp.intelliSenseEngine": "default",
+  "platformio-ide.showEditorTitleShortcuts": true,
+  "platformio-ide.reopenSerialMonitorDelay": 800
 }

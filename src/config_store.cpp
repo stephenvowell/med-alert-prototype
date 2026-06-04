@@ -36,6 +36,9 @@ bool configLoad(DeviceConfig& out) {
   out.sms_family_e164 = readStr(p, "sms_fam");
   out.medical_template = readStr(p, "med_tpl", "Automated medical alert prototype.");
 
+  out.sms_opt_in_acknowledged = p.getBool("sms_opt_in", false);
+  out.sms_opt_in_recorded_at = readStr(p, "sms_opt_in_ts");
+
   out.thr_heart_bpm = p.getFloat("thr_hr", 40.0f);
   out.thr_breath_rpm = p.getFloat("thr_br", 6.0f);
   out.debounce_ms = p.getUInt("deb_ms", 15000);
@@ -66,6 +69,9 @@ bool configSave(const DeviceConfig& in) {
   p.putString("sms_pri", in.sms_primary_e164);
   p.putString("sms_fam", in.sms_family_e164);
   p.putString("med_tpl", in.medical_template);
+
+  p.putBool("sms_opt_in", in.sms_opt_in_acknowledged);
+  p.putString("sms_opt_in_ts", in.sms_opt_in_recorded_at);
 
   p.putFloat("thr_hr", in.thr_heart_bpm);
   p.putFloat("thr_br", in.thr_breath_rpm);

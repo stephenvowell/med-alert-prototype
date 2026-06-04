@@ -20,6 +20,11 @@ struct DeviceConfig {
   String sms_family_e164;
   String medical_template;
 
+  /// Set when setup portal Save runs with the SMS consent checkbox checked (NVS).
+  bool sms_opt_in_acknowledged{false};
+  /// Browser clock at submit (ISO 8601), when JS runs; may be empty. For operator audit trail only.
+  String sms_opt_in_recorded_at;
+
   float thr_heart_bpm{40.0f};
   float thr_breath_rpm{6.0f};
   uint32_t debounce_ms{15000};

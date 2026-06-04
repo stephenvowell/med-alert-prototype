@@ -26,6 +26,7 @@ This guide is for **operators and caregivers** who set up and live with the **Me
 12. [Changing settings later](#12-changing-settings-later)
 13. [Troubleshooting](#13-troubleshooting)
 14. [Privacy and secrets](#14-privacy-and-secrets)
+15. [SMS consent (opt-in) and proof](#15-sms-consent-opt-in-and-proof)
 
 ---
 
@@ -91,6 +92,8 @@ The device enters **setup mode** when:
 - There is **no saved home Wi‑Fi SSID** (factory or cleared memory), **or**
 - **D9 is tied to GND** while the board **resets** or powers up (see [section 12](#12-changing-settings-later)).
 
+**Optional (developers):** You can copy `include/credentials.example.h` to `include/credentials.h` and set `MEDALERT_*` compile-time strings so **empty** NVS fields (Wi‑Fi, Twilio, SMS targets, etc.) are filled before the portal check — useful for a headless first flash. See the README section *Optional embedded credentials*. Do **not** commit `credentials.h` (it is gitignored). If `platformio.ini` defines **`MEDALERT_SKIP_CREDENTIALS_H`**, that file is ignored at build time (portal-first bring-up).
+
 ### Step A — Start setup mode
 
 Power the board. If it enters setup mode, the NeoPixel behavior follows the firmware (often idle/clear until alarm — your builder can confirm current build).
@@ -147,6 +150,7 @@ The device will try to join this network **after** you save and reboot.
 |-------|----------------|
 | **Primary SMS (E.164)** | **First** number to receive an SMS when the alarm reaches that stage (see [section 9](#9-what-happens-when-an-alarm-runs)). |
 | **Family SMS (E.164)** | **Second** number. The label “Family” is only a name — it is simply the **second** slot in time order. |
+| **SMS opt-in (checkbox)** | **Required.** You confirm that each destination has **agreed** to receive SMS from this device under carrier / Twilio rules. The device **stores** that acknowledgment (and a **timestamp from the phone/browser** when you save, if the page’s script runs). You cannot save without checking this box. |
 
 **E.164** means: leading `+`, country code, full number. The device **normalizes on save**: spaces, dashes, and parentheses are ignored; if you omit `+`, **10-digit US numbers** become `+1` plus those digits; **11 digits starting with 1** become `+` plus all digits; other digit-only lengths (8–15) get a single leading `+`. On the setup page in a browser, **leaving each phone field** (or tapping Save) also **rewrites the box** so you see `+1…` before submit. You may still type full E.164 with `+` (recommended for non-US).
 
@@ -276,11 +280,11 @@ Erase NVS or do a **full chip erase** with the flashing tools (developer operati
 
 | Symptom | Things to try |
 |---------|----------------|
-| Cannot see `MedAlert-Setup` Wi‑Fi | Power-cycle the board; confirm setup mode (no Wi‑Fi saved or D9 grounded at boot). |
+| Cannot see `MedAlert-Setup` Wi‑Fi | If Wi‑Fi was already saved, the board starts on your router first — wait **~60 s**; if join fails, the setup AP opens automatically. Or **D9 → GND** at boot (XIAO ESP32-C6: silkscreen **D9** = **GPIO20**). Power-cycle; confirm 2.4 GHz scan on the phone. |
 | Captive page does not open | Go manually to `http://192.168.4.1/`; turn off VPN; try another device. |
 | After Save, device never on home LAN | Wrong SSID/password; 5 GHz-only SSID (ESP32-C6 needs **2.4 GHz** Wi‑Fi); router MAC filtering; weak signal. Re-enter setup with D9. |
 | Dashboard does not load | Phone must be on **same LAN** as device; use correct **IP**; try `http://` not `https://`. |
-| No SMS | Wi‑Fi down; Twilio credentials wrong; Twilio trial restrictions; invalid E.164; Twilio account billing; check dashboard **last SMS error** if present. |
+| No SMS | Wi‑Fi down; Twilio credentials wrong; Twilio trial restrictions; invalid E.164; Twilio account billing; **SMS consent** not saved after a firmware upgrade — open setup, check the opt-in box, **Save**; check dashboard **last SMS error** if present. |
 | Constant false alarms | Raise thresholds slightly; increase **debounce**; tighten **distance gate**; reposition radar; reduce motion in beam. |
 | Never alarms when expected | Lower thresholds carefully **with clinical input**; check distance gate not blocking; verify sensor UART wiring and baud. |
 | Red LED does not light | Wiring to D10; level shifter; brightness set to 0; power supply too weak. |
@@ -294,6 +298,17 @@ For **build and flash** issues, use [`README.md`](../README.md).
 - **Wi‑Fi password**, **Twilio token**, and **SMS content** are serious privacy topics. Do not photograph the setup screen with secrets visible for social media.
 - **Medical template** text may contain **location** or **access** information — treat it like sensitive operational security.
 - This prototype stores configuration in **NVS** on the chip — not encrypted by default on typical ESP32 Arduino setups. A **v2 product** should define a **threat model** and **data handling** policy (see [`V2-ROADMAP.md`](V2-ROADMAP.md)).
+
+---
+
+## 15. SMS consent (opt-in) and proof
+
+Carriers and Twilio expect **documented consent** before you send application SMS. This prototype helps you keep a **device-level record** of the operator’s confirmation at setup:
+
+- The setup form **requires** the **SMS opt-in** checkbox before **Save** succeeds.
+- After save, the home dashboard shows **SMS consent (NVS)** and the stored timestamp (if the browser provided one). **`GET /api/status`** returns `sms_opt_in` and `sms_opt_in_recorded_at` for screenshots or tooling.
+
+That is **supplemental** to your own process (who each number belongs to, how they agreed, opt-out policy). Builders: see **[`SMS-OPT-IN.md`](SMS-OPT-IN.md)** for NVS keys and limitations (not legal advice).
 
 ---
 

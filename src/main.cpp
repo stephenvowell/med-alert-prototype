@@ -28,6 +28,38 @@
 #define MEDALERT_FW_BUILD_UNIX 0ULL
 #endif
 
+#if __has_include("credentials.h") && !defined(MEDALERT_SKIP_CREDENTIALS_H)
+#include "credentials.h"
+namespace {
+void applyEmbeddedCredentialsIfEmpty(DeviceConfig& c) {
+#ifdef MEDALERT_WIFI_SSID
+  if (c.wifi_ssid.length() == 0) c.wifi_ssid = MEDALERT_WIFI_SSID;
+#endif
+#ifdef MEDALERT_WIFI_PASSWORD
+  if (c.wifi_password.length() == 0) c.wifi_password = MEDALERT_WIFI_PASSWORD;
+#endif
+#ifdef MEDALERT_TWILIO_ACCOUNT_SID
+  if (c.twilio_account_sid.length() == 0) c.twilio_account_sid = MEDALERT_TWILIO_ACCOUNT_SID;
+#endif
+#ifdef MEDALERT_TWILIO_AUTH_TOKEN
+  if (c.twilio_auth_token.length() == 0) c.twilio_auth_token = MEDALERT_TWILIO_AUTH_TOKEN;
+#endif
+#ifdef MEDALERT_TWILIO_FROM_E164
+  if (c.twilio_from_e164.length() == 0) c.twilio_from_e164 = MEDALERT_TWILIO_FROM_E164;
+#endif
+#ifdef MEDALERT_SMS_PRIMARY_E164
+  if (c.sms_primary_e164.length() == 0) c.sms_primary_e164 = MEDALERT_SMS_PRIMARY_E164;
+#endif
+#ifdef MEDALERT_SMS_FAMILY_E164
+  if (c.sms_family_e164.length() == 0) c.sms_family_e164 = MEDALERT_SMS_FAMILY_E164;
+#endif
+#ifdef MEDALERT_MEDICAL_TEMPLATE
+  if (c.medical_template.length() == 0) c.medical_template = MEDALERT_MEDICAL_TEMPLATE;
+#endif
+}
+}  // namespace
+#endif
+
 // ---------------------------------------------------------------------------
 // Hardware (Seeed XIAO ESP32-C6 + external NeoPixel ring)
 // ---------------------------------------------------------------------------
@@ -35,8 +67,13 @@
 #define PIN_NEOPIXEL 10  // D10 — change if you wire DIN elsewhere
 #endif
 #ifndef PIN_SETUP
-#define PIN_SETUP 9  // Tie to GND at boot to force captive portal
+// Seeed XIAO ESP32-C6: silkscreen **D9** is SoC **GPIO20** (Arduino `D9`), not GPIO9 — see `pins_arduino.h`.
+#define PIN_SETUP D9
 #endif
+
+// If NVS has WiFi but join never succeeds, start setup SoftAP automatically (wrong password / SSID changed).
+static constexpr uint32_t kStaJoinPortalFallbackMs = 60'000;
+static uint32_t g_sta_join_start_ms = 0;
 
 static constexpr uint8_t kNeoCount = 16;
 static constexpr uint32_t kNeoFlashMs = 400;
@@ -121,7 +158,7 @@ static void appendJsonEscaped(String& o, const String& s) {
 // Dashboard GET /api/status — hand-built JSON (avoids ArduinoJson + clangd template noise).
 static void sendJsonStatus() {
   String out;
-  out.reserve(520);
+  out.reserve(680);
   out += '{';
   out += "\"fw_ver\":\"";
   appendJsonEscaped(out, String(MEDALERT_FW_VERSION));
@@ -153,6 +190,10 @@ static void sendJsonStatus() {
   out += (WiFi.status() == WL_CONNECTED) ? "connected" : "disconnected";
   out += "\",\"last_sms_err\":\"";
   appendJsonEscaped(out, g_last_sms_error);
+  out += "\",\"sms_opt_in\":";
+  out += g_cfg.sms_opt_in_acknowledged ? "true" : "false";
+  out += ",\"sms_opt_in_recorded_at\":\"";
+  appendJsonEscaped(out, g_cfg.sms_opt_in_recorded_at);
   out += "\"}";
   g_server.send(200, "application/json", out);
 }
@@ -262,6 +303,8 @@ static const char kPortalPage[] = R"HTML(
 <label>Twilio From (E.164)<input id="fld_tw_from" name="tw_from" placeholder="+15551234567" inputmode="tel" required/></label>
 <label>Primary SMS (E.164 — test or monitored)<input id="fld_sms_pri" name="sms_pri" placeholder="+15005550006" inputmode="tel" required/></label>
 <label>Family SMS (E.164)<input id="fld_sms_fam" name="sms_fam" inputmode="tel" required/></label>
+<label class="chk"><input type="checkbox" name="sms_opt_in" value="1" required/><span>I confirm each destination number has <strong>opted in</strong> to receive SMS from this device (carrier / Twilio consent rules). This acknowledgment is stored on the device when you save.</span></label>
+<input type="hidden" name="sms_opt_in_client_ts" id="sms_opt_in_client_ts" value=""/>
 <label>Medical / location template<textarea name="med_tpl" rows="4">Medical alert prototype. Verify before dispatch.</textarea></label>
 <hr/>
 <label>Heart rate below (BPM)<input name="thr_hr" type="number" step="0.1" value="40" inputmode="decimal"/></label>
@@ -300,6 +343,8 @@ function wirePhone(id){
 ['fld_tw_from','fld_sms_pri','fld_sms_fam'].forEach(wirePhone);
 var f=document.getElementById('portal_form');
 if(f)f.addEventListener('submit',function(){
+  var ts=document.getElementById('sms_opt_in_client_ts');
+  if(ts)ts.value=new Date().toISOString();
   ['fld_tw_from','fld_sms_pri','fld_sms_fam'].forEach(function(id){
     var el=document.getElementById(id);
     if(el&&el.value)el.value=normalizeE164(el.value);
@@ -428,6 +473,7 @@ static const char kDashPage[] = R"HTML(
 <div class="card"><div>State</div><div id="st">--</div></div>
 </div>
 <p class="meta">Primary SMS in <span id="tp">--</span>s · Family SMS in <span id="tf">--</span>s</p>
+<p class="meta">SMS consent (NVS): <span id="optin">--</span></p>
 <p class="meta">WiFi: <span id="wf">--</span></p>
 <p class="ver" id="fwver">%%MEDALERT_FW_LINE%%</p>
 <p id="err"></p>
@@ -441,6 +487,8 @@ async function poll(){
   document.getElementById('st').textContent=j.state;
   document.getElementById('tp').textContent=j.to_primary_s||0;
   document.getElementById('tf').textContent=j.to_family_s||0;
+  var oi=document.getElementById('optin');
+  if(oi)oi.textContent=j.sms_opt_in?(j.sms_opt_in_recorded_at||'yes (no browser timestamp)'):'not recorded — SMS disabled';
   document.getElementById('wf').textContent=j.wifi;
   document.getElementById('err').textContent=j.last_sms_err||'';
   var fw=document.getElementById('fwver');
@@ -464,6 +512,20 @@ static void handlePortalRoot() {
   String html(kPortalPage);
   html.replace("%%MEDALERT_FW_LINE%%", firmwareInfoLine());
   g_server.send(200, "text/html", html);
+}
+
+// Captive portal: ISO-ish timestamp from the browser at submit (audit only; not notarized).
+static String sanitizeSmsOptInClientTs(const String& raw) {
+  String o;
+  o.reserve(40);
+  for (size_t i = 0; i < raw.length() && o.length() < 40; ++i) {
+    const char c = raw[i];
+    if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '-' || c == ':' ||
+        c == '.' || c == '+' || c == 'T' || c == 't' || c == 'Z' || c == 'z') {
+      o += c;
+    }
+  }
+  return o;
 }
 
 // Strip spaces/dashes/parens; ensure leading + for Twilio E.164.
@@ -510,6 +572,16 @@ static void handlePortalSave() {
   c.sms_primary_e164 = normalizeE164Phone(g_server.arg("sms_pri"));
   c.sms_family_e164 = normalizeE164Phone(g_server.arg("sms_fam"));
   c.medical_template = g_server.arg("med_tpl");
+  if (!g_server.hasArg("sms_opt_in") || g_server.arg("sms_opt_in") != "1") {
+    g_server.send(400, "text/html",
+                  "<!doctype html><html><head><meta charset=\"utf-8\"/></head><body><p>Save was "
+                  "<strong>not</strong> applied: you must check the <strong>SMS opt-in</strong> box "
+                  "confirming recipients have agreed to receive messages.</p><p><a href=\"/\">Back to "
+                  "setup</a></p></body></html>");
+    return;
+  }
+  c.sms_opt_in_acknowledged = true;
+  c.sms_opt_in_recorded_at = sanitizeSmsOptInClientTs(g_server.arg("sms_opt_in_client_ts"));
   c.thr_heart_bpm = g_server.arg("thr_hr").toFloat();
   c.thr_breath_rpm = g_server.arg("thr_br").toFloat();
   c.debounce_ms = (uint32_t)g_server.arg("deb_ms").toInt();
@@ -535,6 +607,8 @@ static void handlePortalSave() {
     return;
   }
 
+  Serial.printf("[cfg] SMS opt-in saved (operator ack); client_ts=%s\n", c.sms_opt_in_recorded_at.c_str());
+
   g_server.send(200, "text/html", "<html><body>Saved. Rebooting…</body></html>");
   // Drain client before reset (flush() deprecated on ESP32 Arduino 3.x).
   g_server.client().clear();
@@ -545,10 +619,35 @@ static void handlePortalSave() {
 // SoftAP + DNS hijack on 53 so phones show the setup page without typing an IP.
 static void startPortal() {
   g_net = NetMode::kPortal;
+  // Clean slate: leftover STA state can prevent the AP from advertising on some C6 builds.
+  WiFi.disconnect(true);
+  delay(50);
+  WiFi.mode(WIFI_OFF);
+  delay(50);
   WiFi.mode(WIFI_AP);
-  WiFi.softAP("MedAlert-Setup", "medalert1");
+
+  const IPAddress ap_ip(192, 168, 4, 1);
+  const IPAddress ap_gw(192, 168, 4, 1);
+  const IPAddress ap_mask(255, 255, 255, 0);
+  if (!WiFi.softAPConfig(ap_ip, ap_gw, ap_mask)) {
+    Serial.println(F("[cfg] softAPConfig returned false (continuing)"));
+  }
+
+  constexpr const char* kApSsid = "MedAlert-Setup";
+  constexpr const char* kApPass = "medalert1";
+  const bool ap_ok = WiFi.softAP(kApSsid, kApPass, 1 /*channel*/, 0 /*ssid visible*/, 4);
   delay(200);
-  g_dns.start(53, "*", WiFi.softAPIP());
+
+  const IPAddress sip = WiFi.softAPIP();
+  Serial.printf("[cfg] SoftAP \"%s\" %s  AP_IP=%s  STA_count=%u\n", kApSsid, ap_ok ? "OK" : "FAILED",
+                sip.toString().c_str(), (unsigned)WiFi.softAPgetStationNum());
+  if (sip[0] == 0) {
+    Serial.println(F("[cfg] ERROR: softAPIP is 0.0.0.0 — check USB power and WiFi stack; try full flash erase"));
+  } else {
+    Serial.printf("[cfg] Portal: join \"%s\" / \"%s\" then open http://%s/\n", kApSsid, kApPass, sip.toString().c_str());
+  }
+
+  g_dns.start(53, "*", sip);
 
   g_server.on("/", HTTP_GET, handlePortalRoot);
   g_server.on("/generate_204", HTTP_GET, handlePortalRoot);  // Android captive probe
@@ -560,10 +659,22 @@ static void startPortal() {
   g_server.begin();
 }
 
+static void fallbackStaToPortal() {
+  Serial.println(F("[cfg] Saved WiFi did not connect in time — starting MedAlert-Setup portal"));
+  g_sta_join_start_ms = 0;
+  g_server.stop();
+  g_dns.stop();
+  WiFi.disconnect(true);
+  delay(100);
+  startPortal();
+}
+
 // Home WiFi client + LAN routes for dashboard, JSON API, and cancel.
 static void startStation() {
   g_net = NetMode::kStation;
   WiFi.mode(WIFI_STA);
+  Serial.printf("[cfg] STA joining saved SSID (len=%u) — dashboard will be http://<this-ip>/ when connected\n",
+                (unsigned)g_cfg.wifi_ssid.length());
   WiFi.begin(g_cfg.wifi_ssid.c_str(), g_cfg.wifi_password.c_str());
 
   g_server.on("/", HTTP_GET, []() {
@@ -580,11 +691,20 @@ static void startStation() {
   g_server.onNotFound([]() { g_server.send(404, "text/plain", "Not found"); });
 
   g_server.begin();
+  g_sta_join_start_ms = millis();
 }
 
 // At most one Twilio attempt per loop pass; on failure set g_last_sms_error and backoff 30s.
 static void tryDispatchSms() {
   if (WiFi.status() != WL_CONNECTED) {
+    return;
+  }
+
+  if (!g_cfg.sms_opt_in_acknowledged) {
+    if (alarmNeedsPrimarySms() || alarmNeedsFamilySms()) {
+      g_last_sms_error =
+          "SMS blocked: opt-in not recorded — open setup (D9 at boot), check SMS consent, Save";
+    }
     return;
   }
 
@@ -626,6 +746,14 @@ static void tryDispatchSms() {
 
 void setup() {
   Serial.begin(115200);
+#if ARDUINO_USB_CDC_ON_BOOT
+  // USB-CDC: host opens the virtual COM port after enumeration — without a short wait, the first
+  // boot lines are often dropped if you open Serial Monitor slightly after reset.
+  const uint32_t serial_wait_until = millis() + 4000;
+  while (!Serial && (int32_t)(millis() - serial_wait_until) < 0) {
+    delay(20);
+  }
+#endif
   delay(200);
   Serial.printf("[MedAlert] %s | git %s | build %llu\n", MEDALERT_FW_VERSION, MEDALERT_FW_GIT,
                 static_cast<unsigned long long>(MEDALERT_FW_BUILD_UNIX));
@@ -634,6 +762,9 @@ void setup() {
 
   // NVS: WiFi, Twilio, thresholds. First boot may return defaults / empty WiFi.
   configLoad(g_cfg);
+#if __has_include("credentials.h") && !defined(MEDALERT_SKIP_CREDENTIALS_H)
+  applyEmbeddedCredentialsIfEmpty(g_cfg);
+#endif
   alarmInit();
   alarmSetConfig(g_cfg.thr_heart_bpm, g_cfg.thr_breath_rpm, g_cfg.debounce_ms, g_cfg.use_distance_gate,
                  g_cfg.max_distance_m);
@@ -643,7 +774,19 @@ void setup() {
   g_strip.show();
 
   // D9 low at boot: always enter setup AP even if WiFi credentials exist (recovery path).
-  const bool force_portal = (digitalRead(PIN_SETUP) == LOW);
+  // XIAO ESP32-C6: silkscreen **D9** = this GPIO (see README wiring table).
+  const int setup_pin_read = digitalRead(PIN_SETUP);
+  const bool force_portal = (setup_pin_read == LOW);
+
+#if __has_include("credentials.h") && !defined(MEDALERT_SKIP_CREDENTIALS_H)
+  Serial.println(
+      F("[cfg] credentials.h is compiled in — MEDALERT_WIFI_* can fill empty NVS and skip SoftAP unless D9→GND at boot"));
+#endif
+  Serial.printf("[cfg] Setup pin silkscreen D9 (SoC GPIO%u) reads %s — force_portal=%s\n",
+                static_cast<unsigned>(PIN_SETUP), setup_pin_read == LOW ? "LOW" : "HIGH",
+                force_portal ? "yes (AP mode)" : "no");
+  Serial.printf("[cfg] saved WiFi SSID in NVS/config: %s (len=%u)\n", configHasWifi(g_cfg) ? "non-empty" : "empty",
+                (unsigned)g_cfg.wifi_ssid.length());
 
   g_mmWave.begin(&g_mmWaveSerial, 115200);
 
@@ -651,13 +794,22 @@ void setup() {
     Serial.println(F("[cfg] Starting captive portal (SoftAP)"));
     startPortal();
   } else {
-    Serial.println(F("[cfg] Connecting STA…"));
+    Serial.println(F("[cfg] Connecting STA (no SoftAP yet — hold D9→GND & reset to force portal, or wait 60s if join fails)"));
     startStation();
   }
 }
 
 void loop() {
   const uint32_t now = millis();
+
+  // SoftAP portal mode was otherwise silent in loop(); heartbeat helps if the host missed boot logs or the wrong COM was fixed mid-session.
+  static uint32_t s_last_serial_hb = 0;
+  if (now - s_last_serial_hb >= 20'000) {
+    s_last_serial_hb = now;
+    const char* mode =
+        (g_net == NetMode::kPortal) ? "portal" : (g_net == NetMode::kStation) ? "sta" : "none";
+    Serial.printf("[hb] net=%s uptime_ms=%lu\n", mode, static_cast<unsigned long>(now));
+  }
 
   // Order: DNS (portal) → HTTP → vitals → FSM → SMS (STA) → LEDs.
   if (g_net == NetMode::kPortal) {
@@ -668,10 +820,23 @@ void loop() {
 
   if (g_net == NetMode::kStation) {
     static uint32_t s_last_wifi_log = 0;
-    if (WiFi.status() != WL_CONNECTED) {
-      if (now - s_last_wifi_log > 5000) {
+    static bool s_logged_sta_ip = false;
+    static bool s_sta_ever_connected = false;
+    if (WiFi.status() == WL_CONNECTED) {
+      s_sta_ever_connected = true;
+      if (!s_logged_sta_ip) {
+        s_logged_sta_ip = true;
+        Serial.printf("[wifi] connected  IP=%s  dashboard: http://%s/\n", WiFi.localIP().toString().c_str(),
+                      WiFi.localIP().toString().c_str());
+      }
+    } else {
+      s_logged_sta_ip = false;
+      if (!s_sta_ever_connected && g_sta_join_start_ms != 0 &&
+          (now - g_sta_join_start_ms) > kStaJoinPortalFallbackMs) {
+        fallbackStaToPortal();
+      } else if (now - s_last_wifi_log > 5000) {
         s_last_wifi_log = now;
-        Serial.println(F("[wifi] disconnected"));
+        Serial.println(F("[wifi] disconnected (wrong password / 2.4 GHz only / out of range?)"));
       }
     }
   }
