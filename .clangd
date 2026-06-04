@@ -1,0 +1,13 @@
+# PlatformIO generates compile_commands.json with the RISC-V GCC driver.
+# clangd uses Clang to parse; strip GCC-only flags that Clang rejects.
+#
+# For standard library / Arduino headers, clangd must be allowed to *query*
+# the cross-compiler. That is done via the clangd **process** flag
+#   --query-driver=...
+# in .vscode/settings.json — NOT here in CompileFlags.Add.
+
+CompileFlags:
+  CompilationDatabase: .
+  Remove:
+    - -fstrict-volatile-bitfields
+    - -fno-tree-switch-conversion

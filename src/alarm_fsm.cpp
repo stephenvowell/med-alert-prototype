@@ -1,3 +1,10 @@
+/**
+ * Alarm finite-state machine: low HR+BR debounce → local alarm window → staged SMS hooks.
+ *
+ * Timing constants (see README): primary SMS delay after alarm start, family delay after
+ * primary, then cooldown before a new debounce may begin. SMS HTTP is done in main.cpp;
+ * this module only exposes alarmNeeds* / alarmMark* and UI countdown helpers.
+ */
 #include "alarm_fsm.h"
 
 static float g_thr_hr{40};
@@ -16,6 +23,7 @@ static uint32_t g_cooldown_until_ms{0};
 
 static VitalsSnapshot g_last{};
 
+// Delays from alarm entry (primary) and from primary success (family); then cooldown.
 static constexpr uint32_t kPrimaryDelayMs = 45'000;
 static constexpr uint32_t kFamilyDelayMs = 60'000;
 static constexpr uint32_t kCooldownMs = 30'000;
@@ -39,6 +47,7 @@ void alarmSetConfig(float thr_hr, float thr_br, uint32_t debounce_ms, bool use_d
   g_max_dist = max_dist_m;
 }
 
+// "Low" only when both rates are valid and below thresholds; optional max distance.
 static bool vitalsLow(const VitalsSnapshot& v) {
   if (!v.heart_valid || !v.breath_valid) {
     return false;
@@ -71,6 +80,7 @@ void alarmTick(const VitalsSnapshot& v, uint32_t now_ms) {
 
   switch (g_state) {
     case AlarmUiState::kIdle:
+      // First sample of sustained low vitals starts debounce timer.
       if (low) {
         g_bad_since_ms = now_ms;
         g_state = AlarmUiState::kDebouncingLowVitals;
@@ -91,6 +101,7 @@ void alarmTick(const VitalsSnapshot& v, uint32_t now_ms) {
       break;
 
     case AlarmUiState::kAlarmPending:
+      // Vitals recovered before SMS: full reset to idle (no cooldown).
       if (!low) {
         alarmInit();
         break;
@@ -144,6 +155,7 @@ uint32_t alarmSecondsToPrimary(uint32_t now_ms) {
   if (elapsed >= kPrimaryDelayMs) {
     return 0;
   }
+  // Ceil to whole seconds for UI countdown.
   return (kPrimaryDelayMs - elapsed + 999) / 1000;
 }
 
@@ -155,6 +167,7 @@ uint32_t alarmSecondsToFamily(uint32_t now_ms) {
   if (elapsed >= kFamilyDelayMs) {
     return 0;
   }
+  // Ceil to whole seconds for UI countdown.
   return (kFamilyDelayMs - elapsed + 999) / 1000;
 }
 

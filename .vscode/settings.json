@@ -1,0 +1,5 @@
+{
+  "clangd.enable": false,
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/compile_commands.json",
+  "C_Cpp.intelliSenseEngine": "default"
+}

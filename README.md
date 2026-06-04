@@ -74,17 +74,19 @@ pio device monitor
 Windows: if `pio` is missing from PATH, use e.g.  
 `%USERPROFILE%\.platformio\penv\Scripts\pio.exe run -t upload`.
 
-**IDE / red squiggles (`Arduino.h` not found):** The build is fine; the editor needs a **compilation database**.
+**IDE / red squiggles (many “errors”):** With **ESP32‑C6 + RISC‑V GCC**, **clangd** often cannot fully model the cross‑compiler’s libstdc++ paths even with `compile_commands.json`, so the Problems panel may show noise (for example `<algorithm>` not found) while **`pio run` is clean**.
 
-1. From this folder, run (use the full path if `pio` is not on your PATH):
+This workspace **disables clangd** and uses **Microsoft C/C++ IntelliSense** with `compile_commands.json` (see `.vscode/settings.json`). Install the **C/C++** extension (`ms-vscode.cpptools`) if prompted.
 
-   `"%USERPROFILE%\.platformio\penv\Scripts\pio.exe" run -t compiledb`
+If you prefer **clangd** instead: set `clangd.enable` to `true` in `.vscode/settings.json`, add a permissive `--query-driver=.+` entry under `clangd.arguments`, run a full **`pio run`** (not only `compiledb`) so `scripts/patch_compile_commands.py` can rewrite the compiler to an **absolute** `riscv32-esp-elf-g++.exe` path, then **Reload Window**.
 
-2. That creates **`compile_commands.json`** in the project root (gitignored; large, machine-specific).
+1. Generate / refresh the DB:  
+   `"%USERPROFILE%\.platformio\penv\Scripts\pio.exe" run -t compiledb`  
+   A subsequent **`pio run`** (normal build) patches `compile_commands.json` for clangd (see `scripts/patch_compile_commands.py`).
 
-3. **Reload the window** (Cursor: *Developer: Reload Window*) so **clangd** / the C++ extension picks it up.
+2. **`.clangd`** still strips GCC-only flags Clang rejects: `-fstrict-volatile-bitfields`, `-fno-tree-switch-conversion`.
 
-This repo includes **`.vscode/c_cpp_properties.json`** (points at `compile_commands.json`), **`.clangd`** (uses that DB and whitelists the RISC-V GCC query driver), and **`.vscode/settings.json`** for clangd’s compile-commands dir.
+3. After config changes: **Developer: Reload Window**.
 
 ---
 
@@ -123,6 +125,7 @@ To avoid storing Twilio secrets on-device, use the small Node relay in [`proxy/R
 | `src/config_store.cpp` | NVS (`Preferences`) config |
 | `src/twilio_client.cpp` | Twilio REST over TLS |
 | `lib/Seeed Arduino mmWave/` | Vendored mmWave driver (header fix documented in [`lib/README.md`](lib/README.md)) |
+| `scripts/patch_compile_commands.py` | Post-link: rewrite `compile_commands.json` driver to absolute `riscv32-esp-elf-g++.exe` (helps clangd if you re-enable it) |
 | `pio_no_progress.py` | PlatformIO post-hook: inserts esptool `--no-progress` after `write-flash` (Windows-friendly) |
 | `proxy/` | Optional Twilio relay |
 

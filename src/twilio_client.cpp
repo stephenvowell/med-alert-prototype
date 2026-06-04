@@ -1,8 +1,13 @@
+/**
+ * Minimal Twilio Programmable SMS client (REST 2010-04-01 …/Messages.json).
+ * Uses HTTP Basic (SID + token). Production builds should pin CA instead of setInsecure().
+ */
 #include "twilio_client.h"
 
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 
+// Twilio Messages API expects application/x-www-form-urlencoded body; SID/token as Basic auth.
 static String urlEncodeFormValue(const String& s) {
   String out;
   out.reserve(s.length() * 3);

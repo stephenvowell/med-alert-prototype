@@ -1,7 +1,9 @@
 #include "config_store.h"
 
+// NVS namespace for Preferences (survives reboot; not encrypted by default on ESP32).
 static const char kNs[] = "medalert";
 
+// Reads string key; missing keys return default without failing begin().
 static String readStr(Preferences& p, const char* key, const String& def = "") {
   if (!p.isKey(key)) {
     return def;
@@ -17,6 +19,7 @@ bool configHasWifi(const DeviceConfig& c) { return c.wifi_ssid.length() > 0; }
 
 bool configLoad(DeviceConfig& out) {
   Preferences p;
+  // true = read-only open (fails if namespace missing — caller gets defaults).
   if (!p.begin(kNs, true)) {
     configFactoryDefaults(out);
     return false;
@@ -48,6 +51,7 @@ bool configLoad(DeviceConfig& out) {
 
 bool configSave(const DeviceConfig& in) {
   Preferences p;
+  // false = read/write (creates namespace if needed).
   if (!p.begin(kNs, false)) {
     return false;
   }

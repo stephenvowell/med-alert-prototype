@@ -1,5 +1,10 @@
 #pragma once
 
+/**
+ * All user-configurable fields from the captive portal, persisted under NVS namespace
+ * "medalert" (see config_store.cpp keys).
+ */
+
 #include <Arduino.h>
 #include <Preferences.h>
 
