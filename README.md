@@ -80,6 +80,16 @@ pio device monitor
 Windows: if `pio` is missing from PATH, use e.g.  
 `%USERPROFILE%\.platformio\penv\Scripts\pio.exe run -t upload`.
 
+### Firmware version
+
+Each **`pio run`** runs **`scripts/gen_build_version.py`**, which generates **`include/build_version.h`** (listed in `.gitignore`, not committed). The binary embeds:
+
+- **`fw_ver` / `MEDALERT_FW_VERSION`** — `git describe --tags --always --dirty` (use **`git tag v0.1.0`** etc. for human-readable release names).
+- **`fw_git`** — short SHA.
+- **`fw_build`** — Unix timestamp at **compile** time (so every rebuild gets a new build id even on the same commit).
+
+These appear on **Serial** at boot, on the **setup** and **LAN dashboard** pages, and in **`GET /api/status`** (`fw_ver`, `fw_git`, `fw_build`). Until the first successful **`pio run`**, `include/build_version.h` may not exist locally; `main.cpp` uses `__has_include` and falls back to a **`dev`** label so the project still parses in the IDE.
+
 **IDE / red squiggles (many “errors”):** With **ESP32‑C6 + RISC‑V GCC**, **clangd** often cannot fully model the cross‑compiler’s libstdc++ paths even with `compile_commands.json`, so the Problems panel may show noise (for example `<algorithm>` not found) while **`pio run` is clean**.
 
 This workspace **disables clangd** and uses **Microsoft C/C++ IntelliSense** with `compile_commands.json` (see `.vscode/settings.json`). Install the **C/C++** extension (`ms-vscode.cpptools`) if prompted.
@@ -100,7 +110,7 @@ If you prefer **clangd** instead: set `clangd.enable` to `true` in `.vscode/sett
 
 1. Flash firmware. With **no WiFi SSID** in NVS, join **`MedAlert-Setup`** / `medalert1`.
 2. Captive portal: **`http://192.168.4.1/`** — enter Wi‑Fi, Twilio **Account SID** / **Auth Token**, **From** (E.164), **primary** and **family** SMS targets, medical text template, thresholds, debounce, distance gate, Neo brightness. **Save** reboots to STA mode.
-3. On your LAN: **`http://<device-ip>/`** — dashboard + **Cancel alert**.
+3. On your LAN: **`http://<device-ip>/`** — dashboard + **Cancel alert**. The page footer shows **firmware version / git / build** (same data as `GET /api/status`).
 
 Re-open the portal later: **ground D9** at reset, or erase NVS / full chip erase.
 
@@ -132,6 +142,7 @@ To avoid storing Twilio secrets on-device, use the small Node relay in [`proxy/R
 | `src/twilio_client.cpp` | Twilio REST over TLS |
 | `lib/Seeed Arduino mmWave/` | Vendored mmWave driver (header fix documented in [`lib/README.md`](lib/README.md)) |
 | `scripts/patch_compile_commands.py` | Post-link: rewrite `compile_commands.json` driver to absolute `riscv32-esp-elf-g++.exe` (helps clangd if you re-enable it) |
+| `scripts/gen_build_version.py` | Pre-build: write `include/build_version.h` (`git describe` + build time) for `fw_ver` / Serial / UI |
 | `pio_no_progress.py` | PlatformIO post-hook: inserts esptool `--no-progress` after `write-flash` (Windows-friendly) |
 | `proxy/` | Optional Twilio relay |
 | `docs/V2-ROADMAP.md` | Draft v2 direction (cellular, monitoring, regulatory) — edit with counsel / partners |

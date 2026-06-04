@@ -116,6 +116,8 @@ On your phone or laptop:
 
 You should see **“MedAlert setup”** with a form. If you see a blank page, disable VPN, try another browser, or try `http://192.168.4.1` without the trailing slash.
 
+A small **Firmware** line under the intro shows the **version string**, **git** short id, and **build** time so you can confirm which firmware is running before you save settings.
+
 ---
 
 ## 6. Setup form — field by field
@@ -146,7 +148,7 @@ The device will try to join this network **after** you save and reboot.
 | **Primary SMS (E.164)** | **First** number to receive an SMS when the alarm reaches that stage (see [section 9](#9-what-happens-when-an-alarm-runs)). |
 | **Family SMS (E.164)** | **Second** number. The label “Family” is only a name — it is simply the **second** slot in time order. |
 
-**E.164** means: leading `+`, country code, full number. The device **normalizes on save**: spaces, dashes, and parentheses are ignored; if you omit `+`, **10-digit US numbers** become `+1` plus those digits; **11 digits starting with 1** become `+` plus all digits; other digit-only lengths (8–15) get a single leading `+`. You may still type full E.164 with `+` (recommended for non-US).
+**E.164** means: leading `+`, country code, full number. The device **normalizes on save**: spaces, dashes, and parentheses are ignored; if you omit `+`, **10-digit US numbers** become `+1` plus those digits; **11 digits starting with 1** become `+` plus all digits; other digit-only lengths (8–15) get a single leading `+`. On the setup page in a browser, **leaving each phone field** (or tapping Save) also **rewrites the box** so you see `+1…` before submit. You may still type full E.164 with `+` (recommended for non-US).
 
 ### Medical / location template
 
@@ -198,11 +200,11 @@ That page is the **dashboard** (status + cancel). There is no cloud login for th
 
 ## 8. Using the home dashboard
 
-- **Status** — Shows vitals estimates, alarm state, and timers (exact layout depends on firmware version).
+- **Status** — Shows vitals estimates, alarm state, and timers (exact layout depends on firmware version). A line at the bottom shows **firmware version**, **git** short SHA, and **build** time (from `GET /api/status`).
 - **Cancel alert** — Sends **`POST /api/alarm/cancel`** to the device. Use this when someone has checked the situation and the alert should stop. Cancel behavior is tied to the alarm state machine (see README).
 - **Last SMS error** — If Twilio fails, a short error string may appear so you know SMS did not go through (e.g. wrong credentials, quota, or network).
 
-**API (for integrators):** `GET /api/status` returns JSON; `POST /api/alarm/cancel` clears the alarm path as implemented.
+**API (for integrators):** `GET /api/status` returns JSON (`fw_ver`, `fw_git`, `fw_build`, vitals, timers, …); `POST /api/alarm/cancel` clears the alarm path as implemented.
 
 ---
 

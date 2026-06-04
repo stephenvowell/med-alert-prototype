@@ -102,17 +102,17 @@
   <strong>Local preview</strong> — matches firmware <code>kPortalPage</code>. <strong>Save &amp; reboot</strong> only works on the device at <code>http://192.168.4.1</code> (join <code>MedAlert-Setup</code> first). From this file, submit will not save.
 </div>
 <h1>MedAlert setup</h1>
-<p class="note">WiFi joins your home network. SMS uses Twilio over HTTPS. Do not use real 911 until legally cleared—use Twilio test numbers. Phone numbers: you may enter 10 digits (US); a leading <strong>+</strong> and country code are added when you save.</p>
-<form method="POST" action="/save">
+<p class="note">WiFi joins your home network. SMS uses Twilio over HTTPS. Do not use real 911 until legally cleared—use Twilio test numbers. US phone fields: enter 10 digits, then tap <strong>Next</strong> or <strong>Save</strong> — the form shows <strong>+1</strong>… automatically (same rules apply on the device if JavaScript is off).</p>
+<form id="portal_form" method="POST" action="/save">
 <label>WiFi SSID<input name="wifi_ssid" autocomplete="username" required/></label>
 <label>WiFi password<input id="fld_wifi_pass" name="wifi_pass" type="password" autocomplete="current-password"/></label>
 <hr/>
 <label>Twilio Account SID<input name="tw_sid" inputmode="text" autocapitalize="none" required/></label>
 <label>Twilio Auth Token<input id="fld_tw_token" name="tw_token" type="password" required/></label>
 <label class="chk"><input type="checkbox" id="show_pw"/><span>Show Wi-Fi password and Twilio Auth Token</span></label>
-<label>Twilio From (E.164)<input name="tw_from" placeholder="+15551234567" inputmode="tel" required/></label>
-<label>Primary SMS (E.164 — test or monitored)<input name="sms_pri" placeholder="+15005550006" inputmode="tel" required/></label>
-<label>Family SMS (E.164)<input name="sms_fam" inputmode="tel" required/></label>
+<label>Twilio From (E.164)<input id="fld_tw_from" name="tw_from" placeholder="+15551234567" inputmode="tel" required/></label>
+<label>Primary SMS (E.164 — test or monitored)<input id="fld_sms_pri" name="sms_pri" placeholder="+15005550006" inputmode="tel" required/></label>
+<label>Family SMS (E.164)<input id="fld_sms_fam" name="sms_fam" inputmode="tel" required/></label>
 <label>Medical / location template<textarea name="med_tpl" rows="4">Medical alert prototype. Verify before dispatch.</textarea></label>
 <hr/>
 <label>Heart rate below (BPM)<input name="thr_hr" type="number" step="0.1" value="40" inputmode="decimal"/></label>
@@ -124,11 +124,44 @@
 <button type="submit">Save &amp; reboot</button>
 </form>
 <script>
+(function(){
+function normalizeE164(raw){
+  raw=String(raw||'');
+  var i,d='',s=0,c;
+  for(i=0;i<raw.length;i++){
+    c=raw[i];
+    if(c==='+'&&d.length===0&&!s){s=1;continue;}
+    if(c>='0'&&c<='9')d+=c;
+  }
+  if(d.length===0)return raw;
+  if(s)return '+'+d;
+  if(d.length===10)return '+1'+d;
+  if(d.length===11&&d[0]==='1')return '+'+d;
+  if(d.length>=8&&d.length<=15)return '+'+d;
+  return '+'+d;
+}
+function wirePhone(id){
+  var el=document.getElementById(id);
+  if(!el)return;
+  el.addEventListener('blur',function(){
+    if(!this.value)return;
+    this.value=normalizeE164(this.value);
+  });
+}
+['fld_tw_from','fld_sms_pri','fld_sms_fam'].forEach(wirePhone);
+var f=document.getElementById('portal_form');
+if(f)f.addEventListener('submit',function(){
+  ['fld_tw_from','fld_sms_pri','fld_sms_fam'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el&&el.value)el.value=normalizeE164(el.value);
+  });
+});
 document.getElementById('show_pw').addEventListener('change',function(){
   var t=this.checked?'text':'password';
   document.getElementById('fld_wifi_pass').type=t;
   document.getElementById('fld_tw_token').type=t;
 });
+})();
 </script>
 </body>
 </html>

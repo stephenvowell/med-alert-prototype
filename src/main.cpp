@@ -20,6 +20,14 @@
 #include "config_store.h"
 #include "twilio_client.h"
 
+#if __has_include("build_version.h")
+#include "build_version.h"
+#else
+#define MEDALERT_FW_VERSION "dev"
+#define MEDALERT_FW_GIT ""
+#define MEDALERT_FW_BUILD_UNIX 0ULL
+#endif
+
 // ---------------------------------------------------------------------------
 // Hardware (Seeed XIAO ESP32-C6 + external NeoPixel ring)
 // ---------------------------------------------------------------------------
@@ -113,9 +121,15 @@ static void appendJsonEscaped(String& o, const String& s) {
 // Dashboard GET /api/status — hand-built JSON (avoids ArduinoJson + clangd template noise).
 static void sendJsonStatus() {
   String out;
-  out.reserve(400);
+  out.reserve(520);
   out += '{';
-  out += "\"hr\":";
+  out += "\"fw_ver\":\"";
+  appendJsonEscaped(out, String(MEDALERT_FW_VERSION));
+  out += "\",\"fw_git\":\"";
+  appendJsonEscaped(out, String(MEDALERT_FW_GIT));
+  out += "\",\"fw_build\":";
+  out += String(static_cast<unsigned long long>(MEDALERT_FW_BUILD_UNIX));
+  out += ",\"hr\":";
   out += String(g_vitals.heart_bpm, 2);
   out += ",\"hr_ok\":";
   out += g_vitals.heart_valid ? "true" : "false";
@@ -201,6 +215,7 @@ static const char kPortalPage[] = R"HTML(
     border-radius: 10px 10px 0 0;
   }
   .note { font-size: 0.9rem; color: var(--muted); margin: 0.75rem 0 1rem; }
+  .ver { font-size: 0.85rem; color: var(--muted); margin: 0 0 1rem; line-height: 1.4; word-break: break-word; }
   label { display: block; margin-top: 0.85rem; font-weight: 600; font-size: 0.9rem; color: var(--text); }
   input, textarea {
     width: 100%;
@@ -235,17 +250,18 @@ static const char kPortalPage[] = R"HTML(
 </head>
 <body>
 <h1>MedAlert setup</h1>
-<p class="note">WiFi joins your home network. SMS uses Twilio over HTTPS. Do not use real 911 until legally cleared—use Twilio test numbers. Phone numbers: you may enter 10 digits (US); a leading <strong>+</strong> and country code are added when you save.</p>
-<form method="POST" action="/save">
+<p class="note">WiFi joins your home network. SMS uses Twilio over HTTPS. Do not use real 911 until legally cleared—use Twilio test numbers. US phone fields: enter 10 digits, then tap <strong>Next</strong> or <strong>Save</strong> — the form shows <strong>+1</strong>… automatically (same rules apply on the device if JavaScript is off).</p>
+<p class="ver">%%MEDALERT_FW_LINE%%</p>
+<form id="portal_form" method="POST" action="/save">
 <label>WiFi SSID<input name="wifi_ssid" autocomplete="username" required/></label>
 <label>WiFi password<input id="fld_wifi_pass" name="wifi_pass" type="password" autocomplete="current-password"/></label>
 <hr/>
 <label>Twilio Account SID<input name="tw_sid" inputmode="text" autocapitalize="none" required/></label>
 <label>Twilio Auth Token<input id="fld_tw_token" name="tw_token" type="password" required/></label>
 <label class="chk"><input type="checkbox" id="show_pw"/><span>Show Wi-Fi password and Twilio Auth Token</span></label>
-<label>Twilio From (E.164)<input name="tw_from" placeholder="+15551234567" inputmode="tel" required/></label>
-<label>Primary SMS (E.164 — test or monitored)<input name="sms_pri" placeholder="+15005550006" inputmode="tel" required/></label>
-<label>Family SMS (E.164)<input name="sms_fam" inputmode="tel" required/></label>
+<label>Twilio From (E.164)<input id="fld_tw_from" name="tw_from" placeholder="+15551234567" inputmode="tel" required/></label>
+<label>Primary SMS (E.164 — test or monitored)<input id="fld_sms_pri" name="sms_pri" placeholder="+15005550006" inputmode="tel" required/></label>
+<label>Family SMS (E.164)<input id="fld_sms_fam" name="sms_fam" inputmode="tel" required/></label>
 <label>Medical / location template<textarea name="med_tpl" rows="4">Medical alert prototype. Verify before dispatch.</textarea></label>
 <hr/>
 <label>Heart rate below (BPM)<input name="thr_hr" type="number" step="0.1" value="40" inputmode="decimal"/></label>
@@ -257,11 +273,44 @@ static const char kPortalPage[] = R"HTML(
 <button type="submit">Save &amp; reboot</button>
 </form>
 <script>
+(function(){
+function normalizeE164(raw){
+  raw=String(raw||'');
+  var i,d='',s=0,c;
+  for(i=0;i<raw.length;i++){
+    c=raw[i];
+    if(c==='+'&&d.length===0&&!s){s=1;continue;}
+    if(c>='0'&&c<='9')d+=c;
+  }
+  if(d.length===0)return raw;
+  if(s)return '+'+d;
+  if(d.length===10)return '+1'+d;
+  if(d.length===11&&d[0]==='1')return '+'+d;
+  if(d.length>=8&&d.length<=15)return '+'+d;
+  return '+'+d;
+}
+function wirePhone(id){
+  var el=document.getElementById(id);
+  if(!el)return;
+  el.addEventListener('blur',function(){
+    if(!this.value)return;
+    this.value=normalizeE164(this.value);
+  });
+}
+['fld_tw_from','fld_sms_pri','fld_sms_fam'].forEach(wirePhone);
+var f=document.getElementById('portal_form');
+if(f)f.addEventListener('submit',function(){
+  ['fld_tw_from','fld_sms_pri','fld_sms_fam'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el&&el.value)el.value=normalizeE164(el.value);
+  });
+});
 document.getElementById('show_pw').addEventListener('change',function(){
   var t=this.checked?'text':'password';
   document.getElementById('fld_wifi_pass').type=t;
   document.getElementById('fld_tw_token').type=t;
 });
+})();
 </script>
 </body>
 </html>
@@ -351,6 +400,7 @@ static const char kDashPage[] = R"HTML(
   .card > div:first-child { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
   .card > div:last-child { font-size: 1.5rem; font-weight: 700; margin-top: 0.25rem; word-break: break-word; color: var(--text); }
   .meta { font-size: 0.95rem; margin: 0.35rem 0; color: var(--text); }
+  .ver { font-size: 0.85rem; color: var(--muted); margin: 0.35rem 0 0.75rem; line-height: 1.4; word-break: break-word; }
   #err { font-size: 0.9rem; word-break: break-word; color: var(--warn-text); min-height: 1.2em; }
   #kill {
     width: 100%;
@@ -379,6 +429,7 @@ static const char kDashPage[] = R"HTML(
 </div>
 <p class="meta">Primary SMS in <span id="tp">--</span>s · Family SMS in <span id="tf">--</span>s</p>
 <p class="meta">WiFi: <span id="wf">--</span></p>
+<p class="ver" id="fwver">%%MEDALERT_FW_LINE%%</p>
 <p id="err"></p>
 <button type="button" id="kill">Cancel alert / clear LEDs</button>
 <script>
@@ -392,6 +443,8 @@ async function poll(){
   document.getElementById('tf').textContent=j.to_family_s||0;
   document.getElementById('wf').textContent=j.wifi;
   document.getElementById('err').textContent=j.last_sms_err||'';
+  var fw=document.getElementById('fwver');
+  if(fw&&j.fw_ver!=null)fw.textContent=j.fw_ver+' · git '+(j.fw_git||'')+' · build '+(j.fw_build!=null?j.fw_build:'');
 }
 setInterval(poll,500);poll();
 document.getElementById('kill').onclick=async()=>{
@@ -402,7 +455,16 @@ document.getElementById('kill').onclick=async()=>{
 </html>
 )HTML";
 
-static void handlePortalRoot() { g_server.send(200, "text/html", kPortalPage); }
+static String firmwareInfoLine() {
+  return String("Firmware ") + String(MEDALERT_FW_VERSION) + " · git " + String(MEDALERT_FW_GIT) + " · build " +
+         String(static_cast<unsigned long long>(MEDALERT_FW_BUILD_UNIX));
+}
+
+static void handlePortalRoot() {
+  String html(kPortalPage);
+  html.replace("%%MEDALERT_FW_LINE%%", firmwareInfoLine());
+  g_server.send(200, "text/html", html);
+}
 
 // Strip spaces/dashes/parens; ensure leading + for Twilio E.164.
 // 10 digits only -> +1… (NANP). 11 digits starting with 1 -> +…. Other digit runs -> +digits.
@@ -504,7 +566,11 @@ static void startStation() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(g_cfg.wifi_ssid.c_str(), g_cfg.wifi_password.c_str());
 
-  g_server.on("/", HTTP_GET, []() { g_server.send(200, "text/html", kDashPage); });
+  g_server.on("/", HTTP_GET, []() {
+    String html(kDashPage);
+    html.replace("%%MEDALERT_FW_LINE%%", firmwareInfoLine());
+    g_server.send(200, "text/html", html);
+  });
   g_server.on("/api/status", HTTP_GET, sendJsonStatus);
   g_server.on("/api/alarm/cancel", HTTP_POST, []() {
     alarmCancel();
@@ -561,6 +627,8 @@ static void tryDispatchSms() {
 void setup() {
   Serial.begin(115200);
   delay(200);
+  Serial.printf("[MedAlert] %s | git %s | build %llu\n", MEDALERT_FW_VERSION, MEDALERT_FW_GIT,
+                static_cast<unsigned long long>(MEDALERT_FW_BUILD_UNIX));
 
   pinMode(PIN_SETUP, INPUT_PULLUP);
 

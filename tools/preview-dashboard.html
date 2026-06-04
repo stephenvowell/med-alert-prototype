@@ -5,6 +5,9 @@
 (function () {
   if (location.protocol !== "file:") return;
   const MOCK = {
+    fw_ver: "file-preview",
+    fw_git: "mock",
+    fw_build: 0,
     hr: 72.3,
     hr_ok: true,
     br: 14.1,
@@ -121,6 +124,7 @@
   .card > div:first-child { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
   .card > div:last-child { font-size: 1.5rem; font-weight: 700; margin-top: 0.25rem; word-break: break-word; color: var(--text); }
   .meta { font-size: 0.95rem; margin: 0.35rem 0; color: var(--text); }
+  .ver { font-size: 0.85rem; color: var(--muted); margin: 0.35rem 0 0.75rem; line-height: 1.4; word-break: break-word; }
   #err { font-size: 0.9rem; word-break: break-word; color: var(--warn-text); min-height: 1.2em; }
   #kill {
     width: 100%;
@@ -149,6 +153,7 @@
 </div>
 <p class="meta">Primary SMS in <span id="tp">--</span>s · Family SMS in <span id="tf">--</span>s</p>
 <p class="meta">WiFi: <span id="wf">--</span></p>
+<p class="ver" id="fwver">Firmware file-preview · git mock · build 0</p>
 <p id="err"></p>
 <button type="button" id="kill">Cancel alert / clear LEDs</button>
 <script>
@@ -162,6 +167,8 @@ async function poll(){
   document.getElementById('tf').textContent=j.to_family_s||0;
   document.getElementById('wf').textContent=j.wifi;
   document.getElementById('err').textContent=j.last_sms_err||'';
+  var fw=document.getElementById('fwver');
+  if(fw&&j.fw_ver!=null)fw.textContent=j.fw_ver+' · git '+(j.fw_git||'')+' · build '+(j.fw_build!=null?j.fw_build:'');
 }
 setInterval(poll,500);poll();
 document.getElementById('kill').onclick=async()=>{
