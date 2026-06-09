@@ -2,7 +2,8 @@
 
 /**
  * Alarm FSM types and API. VitalsSnapshot is filled by main from MR60BHA2; alarmTick()
- * advances state once per loop. SMS side effects live in main (HTTP).
+ * advances state once per loop. Debounce/alarm_pending require human_present. SMS side
+ * effects live in main (HTTP).
  */
 
 #include <Arduino.h>

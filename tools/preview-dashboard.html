@@ -151,9 +151,10 @@
 <div class="card"><div>Heart (BPM)</div><div id="hr">--</div></div>
 <div class="card"><div>Breath (/min)</div><div id="br">--</div></div>
 <div class="card"><div>Distance (m)</div><div id="dist">--</div></div>
+<div class="card"><div>Person (radar)</div><div id="human">--</div></div>
 <div class="card"><div>State</div><div id="st">--</div></div>
 </div>
-<p class="meta">Primary SMS in <span id="tp">--</span>s · Family SMS in <span id="tf">--</span>s</p>
+<p class="meta">Alarms require <strong>person detected</strong> plus low vitals (debounce). Primary SMS in <span id="tp">--</span>s · Family SMS in <span id="tf">--</span>s</p>
 <p class="meta">SMS consent (NVS): <span id="optin">--</span></p>
 <p class="meta">WiFi: <span id="wf">--</span></p>
 <p class="ver" id="fwver">Firmware file-preview · git mock · build 0</p>
@@ -165,6 +166,8 @@ async function poll(){
   document.getElementById('hr').textContent=(j.hr_ok?j.hr.toFixed(1):'n/a');
   document.getElementById('br').textContent=(j.br_ok?j.br.toFixed(1):'n/a');
   document.getElementById('dist').textContent=(j.dist_ok?j.dist.toFixed(2):'n/a');
+  var hum=document.getElementById('human');
+  if(hum)hum.textContent=j.human?'yes':'no';
   document.getElementById('st').textContent=j.state;
   document.getElementById('tp').textContent=j.to_primary_s||0;
   document.getElementById('tf').textContent=j.to_family_s||0;

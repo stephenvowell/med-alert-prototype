@@ -1,6 +1,6 @@
 # MedAlert — mmWave vitals monitor (prototype)
 
-Firmware for a **bedside-style vitals watcher** built from a **Seeed XIAO ESP32-C6**, **MR60BHA2** 60 GHz mmWave radar, and a **NeoPixel** ring. When heart rate and breathing rate stay below configurable limits for a debounced period, the device raises a **local alarm** (flashing LEDs) and can send **staged SMS** via **Twilio** to a primary and a secondary contact.
+Firmware for a **bedside-style vitals watcher** built from a **Seeed XIAO ESP32-C6**, **MR60BHA2** 60 GHz mmWave radar, and a **NeoPixel** ring. When heart rate and breathing rate stay below configurable limits for a debounced period **while the radar reports a person present**, the device raises a **local alarm** (flashing LEDs) and can send **staged SMS** via **Twilio** to a primary and a secondary contact.
 
 **Purpose of this repository:** A **working prototype** to **demonstrate** the product vision—sensing, alarms, configuration, and remote notification—for **fundraising** and conversations toward **bringing a future product to market**. Pitches and decks should still distinguish **“investable prototype”** from **cleared / commercial medical hardware** (see v2 roadmap).
 
@@ -8,7 +8,7 @@ Firmware for a **bedside-style vitals watcher** built from a **Seeed XIAO ESP32-
 
 **Future direction (draft):** A v2 program outline—cellular backup, monitored escalation, regulatory path—is in [`docs/V2-ROADMAP.md`](docs/V2-ROADMAP.md). Edit that file with your counsel and partners.
 
-**End-user instructions:** Step-by-step setup, form fields, dashboard, alarm timeline, and troubleshooting are in [`docs/USER-GUIDE.md`](docs/USER-GUIDE.md) (for caregivers, installers, and demos).
+**End-user instructions:** Step-by-step setup, form fields, dashboard, alarm timeline, and troubleshooting are in [`docs/USER-GUIDE.md`](docs/USER-GUIDE.md) (for caregivers, installers, and demos). **UI reference figures** (SVG wireframes of the setup portal and LAN dashboard) live in [`docs/images/`](docs/images/).
 
 ---
 
@@ -27,7 +27,7 @@ Together this forms a **standalone device**: it joins your Wi‑Fi (or starts a 
 ## Functionality (what it does)
 
 1. **Sensing** — Reads HR / BR / distance from the MR60BHA2 stack (vendored Seeed mmWave library under `lib/`).
-2. **Low-vitals detection** — If HR **and** BR are **both** below configured thresholds for a **debounce** window (default **15 s**), an alarm sequence can start. An optional **distance gate** (default **≤ 1.5 m**) reduces false triggers when nobody is near the bed.
+2. **Low-vitals detection** — If HR **and** BR are **both** below configured thresholds for a **debounce** window (default **15 s**), an alarm sequence can start **only while the radar reports a person present**; an optional **distance gate** (default **≤ 1.5 m**) reduces false triggers when nobody is near the bed.
 3. **Local alarm** — NeoPixel ring **blinks red** while in alarm-related states (non-blocking UI loop).
 4. **Staged notifications** — After alarm confirmation timing, sends **Twilio SMS** to a **primary** E.164, then (after another delay) to a **family** E.164. SMS failures use a **30 s** backoff between retries.
 5. **Operator UI** — On the LAN: **live JSON status** (`/api/status`), **cancel** (`POST /api/alarm/cancel`), and a simple HTML dashboard. First boot (or forced setup) uses **SoftAP** `MedAlert-Setup` / password `medalert1` and captive portal at `http://192.168.4.1/`.
@@ -37,8 +37,8 @@ Together this forms a **standalone device**: it joins your Wi‑Fi (or starts a 
 
 | Phase | Behavior |
 |--------|-----------|
-| Low vitals | HR and BR both under thresholds for debounce (optional distance gate). |
-| Alarm | Neo flashes red; dashboard shows state and countdowns; cancel via UI or API. Vitals recovering before SMS can cancel the pre-SMS alarm. |
+| Low vitals | HR and BR both under thresholds for debounce **while radar reports a person** (optional distance gate). |
+| Alarm | Neo flashes red; dashboard shows state and countdowns; cancel via UI or API. Vitals recovering **or loss of person-detect** before SMS can cancel the pre-SMS alarm. |
 | T + 45 s | First SMS → **primary** number. |
 | T + 45 s + 60 s | Second SMS → **family** number. |
 | Cooldown | **30 s** before a new debounce cycle may start. |

@@ -87,6 +87,8 @@ Your builder should confirm:
 
 ## 5. First-time Wi‑Fi setup (captive portal)
 
+The setup page includes a **live radar** strip (polls the device) so you can confirm **person detected** and rough HR/BR while configuring. Alarms still require joining home Wi‑Fi in normal operation; the strip is for **placement checks** on the setup network.
+
 The device enters **setup mode** when:
 
 - There is **no saved home Wi‑Fi SSID** (factory or cleared memory), **or**
@@ -117,9 +119,13 @@ On your phone or laptop:
 - Many phones show a **“Sign in to network”** or captive portal banner — tap it.
 - If nothing pops up, open a browser and go to: **`http://192.168.4.1/`**
 
-You should see **“MedAlert setup”** with a form. If you see a blank page, disable VPN, try another browser, or try `http://192.168.4.1` without the trailing slash.
+You should see **“MedAlert setup”** with a form and a **Radar (live)** block (person yes/no and HR/BR). If you see a blank page, disable VPN, try another browser, or try `http://192.168.4.1` without the trailing slash.
 
 A small **Firmware** line under the intro shows the **version string**, **git** short id, and **build** time so you can confirm which firmware is running before you save settings.
+
+![MedAlert setup page — reference wireframe (layout matches firmware; not a photograph)](images/medalert-setup-portal.svg)
+
+*Figure: Captive portal at `http://192.168.4.1/`. This SVG is a **reference wireframe** from the same structure as `kPortalPage` in `src/main.cpp`; your phone’s colors (light/dark) and exact spacing may differ slightly.*
 
 ---
 
@@ -204,17 +210,21 @@ That page is the **dashboard** (status + cancel). There is no cloud login for th
 
 ## 8. Using the home dashboard
 
-- **Status** — Shows vitals estimates, alarm state, and timers (exact layout depends on firmware version). A line at the bottom shows **firmware version**, **git** short SHA, and **build** time (from `GET /api/status`).
+![MedAlert LAN dashboard — reference wireframe (layout matches firmware; not a photograph)](images/medalert-lan-dashboard.svg)
+
+*Figure: Status page in the browser after the board joins your home Wi‑Fi (same idea as `http://192.168.1.x/` in [section 7](#7-after-you-tap-save)). **Wireframe** only — sample vitals shown.*
+
+- **Status** — Shows vitals estimates, **person detected (radar)**, alarm state, and timers (exact layout depends on firmware version). A line at the bottom shows **firmware version**, **git** short SHA, and **build** time (from `GET /api/status`).
 - **Cancel alert** — Sends **`POST /api/alarm/cancel`** to the device. Use this when someone has checked the situation and the alert should stop. Cancel behavior is tied to the alarm state machine (see README).
 - **Last SMS error** — If Twilio fails, a short error string may appear so you know SMS did not go through (e.g. wrong credentials, quota, or network).
 
-**API (for integrators):** `GET /api/status` returns JSON (`fw_ver`, `fw_git`, `fw_build`, vitals, timers, …); `POST /api/alarm/cancel` clears the alarm path as implemented.
+**API (for integrators):** `GET /api/status` returns JSON (`fw_ver`, `fw_git`, `fw_build`, vitals, **`human`** = radar person present, timers, …); `POST /api/alarm/cancel` clears the alarm path as implemented.
 
 ---
 
 ## 9. What happens when an alarm runs
 
-**Detection (simplified):** While the device is running, it reads **heart rate** and **breathing rate** from the radar. If **both** are **below** your configured thresholds **continuously** for the **debounce** time (and the **distance gate** allows it, if enabled), the firmware can enter an **alarm** path.
+**Detection (simplified):** While the device is running, it reads **heart rate** and **breathing rate** from the radar. If **both** are **below** your configured thresholds **continuously** for the **debounce** time, **and** the radar reports **someone present**, the firmware can enter an **alarm** path. If the radar stops reporting a person during debounce or during the **first** alarm phase (before the primary SMS has been sent), the firmware **treats that like vitals recovering** and **clears** back toward idle — so an **empty bed** should not latch an alarm from stale low numbers alone.
 
 **Local alarm:** The **NeoPixel ring flashes red** during alarm-related phases so someone **in the room** gets a strong visual cue.
 
@@ -222,7 +232,7 @@ That page is the **dashboard** (status + cancel). There is no cloud login for th
 
 | Time (approx.) | Action |
 |------------------|--------|
-| **Alarm active (first phase)** | Neo flashes red; dashboard shows state; **Cancel** is available. While still in this **first** phase (**before** the primary SMS has been sent successfully), if vitals **return to normal**, the firmware **clears** the alarm and **does not** send SMS. |
+| **Alarm active (first phase)** | Neo flashes red; dashboard shows state; **Cancel** is available. While still in this **first** phase (**before** the primary SMS has been sent successfully), if vitals **return to normal** **or the radar no longer reports a person**, the firmware **clears** the alarm and **does not** send SMS. |
 | **45 seconds** after alarm entry | **First SMS** to the number saved in **Primary SMS** (`sms_pri`). |
 | **60 seconds** after the **first SMS was successfully sent** | **Second SMS** to **Family SMS** (`sms_fam`). |
 

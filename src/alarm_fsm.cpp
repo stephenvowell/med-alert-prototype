@@ -1,6 +1,7 @@
 /**
  * Alarm finite-state machine: low HR+BR debounce → local alarm window → staged SMS hooks.
  *
+ * Debounce and alarm_pending require human_present (radar); empty bed will not latch an alarm.
  * Timing constants (see README): primary SMS delay after alarm start, family delay after
  * primary, then cooldown before a new debounce may begin. SMS HTTP is done in main.cpp;
  * this module only exposes alarmNeeds* / alarmMark* and UI countdown helpers.
@@ -76,7 +77,7 @@ void alarmTick(const VitalsSnapshot& v, uint32_t now_ms) {
     return;
   }
 
-  const bool low = vitalsLow(v);
+  const bool low = vitalsLow(v) && v.human_present;
 
   switch (g_state) {
     case AlarmUiState::kIdle:

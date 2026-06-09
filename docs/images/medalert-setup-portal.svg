@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 780" width="380" height="780" role="img" aria-labelledby="t1">
+  <title id="t1">MedAlert setup captive portal  reference wireframe</title>
+  <defs>
+    <linearGradient id="hgrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e3f2fd"/>
+      <stop offset="100%" stop-color="#f4f6f8"/>
+    </linearGradient>
+  </defs>
+  <rect width="380" height="780" fill="#f4f6f8"/>
+  <rect x="12" y="12" width="356" height="756" rx="14" fill="#fff" stroke="#e2e8f0"/>
+  <!-- Title -->
+  <rect x="12" y="12" width="356" height="52" rx="14" fill="url(#hgrad)"/>
+  <line x1="12" y1="52" x2="368" y2="52" stroke="#1565c0" stroke-width="3"/>
+  <text x="28" y="44" font-family="system-ui,Segoe UI,sans-serif" font-size="18" font-weight="700" fill="#0f172a">MedAlert setup</text>
+  <!-- Note -->
+  <text x="24" y="78" font-family="system-ui,Segoe UI,sans-serif" font-size="10" fill="#475569">WiFi + Twilio setup · US phone fields normalize to +1&</text>
+  <!-- Firmware line -->
+  <text x="24" y="100" font-family="ui-monospace,monospace" font-size="9" fill="#64748b">v0.1.0 · git abc1234 · build &</text>
+  <!-- Radar strip -->
+  <rect x="20" y="112" width="340" height="108" rx="10" fill="#fff" stroke="#e2e8f0"/>
+  <text x="32" y="134" font-family="system-ui,Segoe UI,sans-serif" font-size="12" font-weight="600" fill="#0f172a">Radar (live)</text>
+  <text x="32" y="158" font-family="system-ui,Segoe UI,sans-serif" font-size="10" fill="#64748b">Person detected</text>
+  <text x="32" y="176" font-family="system-ui,Segoe UI,sans-serif" font-size="15" font-weight="700" fill="#0f172a">yes</text>
+  <text x="200" y="158" font-family="system-ui,Segoe UI,sans-serif" font-size="10" fill="#64748b">HR / BR</text>
+  <text x="200" y="176" font-family="system-ui,Segoe UI,sans-serif" font-size="15" font-weight="700" fill="#0f172a">72.0 · 14.0</text>
+  <text x="32" y="204" font-family="system-ui,Segoe UI,sans-serif" font-size="9" fill="#64748b">Alarms only when someone detected and vitals stay low&</text>
+  <!-- Form fields (simplified) -->
+  <text x="24" y="242" font-family="system-ui,Segoe UI,sans-serif" font-size="11" font-weight="600" fill="#0f172a">WiFi SSID</text>
+  <rect x="24" y="248" width="332" height="36" rx="8" fill="#fff" stroke="#e2e8f0"/>
+  <text x="24" y="304" font-family="system-ui,Segoe UI,sans-serif" font-size="11" font-weight="600" fill="#0f172a">WiFi password</text>
+  <rect x="24" y="310" width="332" height="36" rx="8" fill="#fff" stroke="#e2e8f0"/>
+  <line x1="24" y1="366" x2="356" y2="366" stroke="#e2e8f0"/>
+  <text x="24" y="388" font-family="system-ui,Segoe UI,sans-serif" font-size="11" font-weight="600" fill="#0f172a">Twilio Account SID</text>
+  <rect x="24" y="394" width="332" height="36" rx="8" fill="#fff" stroke="#e2e8f0"/>
+  <text x="24" y="450" font-family="system-ui,Segoe UI,sans-serif" font-size="11" font-weight="600" fill="#0f172a">Twilio Auth Token</text>
+  <rect x="24" y="456" width="332" height="36" rx="8" fill="#fff" stroke="#e2e8f0"/>
+  <text x="24" y="512" font-family="system-ui,Segoe UI,sans-serif" font-size="11" font-weight="600" fill="#0f172a">Primary SMS · Family SMS · Opt-in checkbox &</text>
+  <rect x="24" y="518" width="332" height="56" rx="8" fill="#fff" stroke="#e2e8f0"/>
+  <text x="24" y="594" font-family="system-ui,Segoe UI,sans-serif" font-size="11" font-weight="600" fill="#0f172a">Thresholds · debounce · distance gate · Neo brightness</text>
+  <rect x="24" y="600" width="332" height="44" rx="8" fill="#fff" stroke="#e2e8f0"/>
+  <!-- Save button -->
+  <rect x="24" y="668" width="332" height="48" rx="24" fill="#1565c0"/>
+  <text x="190" y="698" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="14" font-weight="600" fill="#fff">Save &amp; reboot</text>
+  <text x="190" y="748" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-size="9" fill="#94a3b8">Wireframe  see src/main.cpp kPortalPage</text>
+</svg>

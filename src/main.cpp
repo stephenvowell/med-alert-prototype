@@ -4,6 +4,7 @@
  * Runtime modes:
  *   - SoftAP + captive portal: first boot or D9 grounded at reset, or no WiFi in NVS.
  *   - STA + WebServer: normal operation; polls radar, runs alarm FSM, optional Twilio SMS.
+ * Alarm debounce / alarm_pending require MR60 human_present (see alarm_fsm.cpp).
  *
  * SMS is issued from loop() via tryDispatchSms() when the FSM asks for primary/family sends.
  * See README for regulatory limits (Twilio is not carrier 911).
@@ -64,7 +65,8 @@ void applyEmbeddedCredentialsIfEmpty(DeviceConfig& c) {
 // Hardware (Seeed XIAO ESP32-C6 + external NeoPixel ring)
 // ---------------------------------------------------------------------------
 #ifndef PIN_NEOPIXEL
-#define PIN_NEOPIXEL 10  // D10 — change if you wire DIN elsewhere
+// XIAO ESP32-C6: silkscreen D10 is `D10` in Arduino (SoC GPIO18). Raw `10` is GPIO10, not D10.
+#define PIN_NEOPIXEL D10
 #endif
 #ifndef PIN_SETUP
 // Seeed XIAO ESP32-C6: silkscreen **D9** is SoC **GPIO20** (Arduino `D9`), not GPIO9 — see `pins_arduino.h`.
@@ -293,6 +295,14 @@ static const char kPortalPage[] = R"HTML(
 <h1>MedAlert setup</h1>
 <p class="note">WiFi joins your home network. SMS uses Twilio over HTTPS. Do not use real 911 until legally cleared—use Twilio test numbers. US phone fields: enter 10 digits, then tap <strong>Next</strong> or <strong>Save</strong> — the form shows <strong>+1</strong>… automatically (same rules apply on the device if JavaScript is off).</p>
 <p class="ver">%%MEDALERT_FW_LINE%%</p>
+<div class="radar-strip" style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:1rem;background:var(--surface)">
+  <div style="font-weight:600;font-size:0.9rem;margin-bottom:8px">Radar (live)</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:0.95rem">
+    <div><span style="color:var(--muted)">Person detected</span><br/><strong id="pv_human">--</strong></div>
+    <div><span style="color:var(--muted)">HR / BR</span><br/><strong id="pv_hr">--</strong> · <strong id="pv_br">--</strong></div>
+  </div>
+  <p style="margin:8px 0 0;font-size:0.85rem;color:var(--muted)">Alarms only start when someone is detected <em>and</em> vitals stay below your thresholds for the debounce time.</p>
+</div>
 <form id="portal_form" method="POST" action="/save">
 <label>WiFi SSID<input name="wifi_ssid" autocomplete="username" required/></label>
 <label>WiFi password<input id="fld_wifi_pass" name="wifi_pass" type="password" autocomplete="current-password"/></label>
@@ -355,6 +365,20 @@ document.getElementById('show_pw').addEventListener('change',function(){
   document.getElementById('fld_wifi_pass').type=t;
   document.getElementById('fld_tw_token').type=t;
 });
+async function portalRadarPoll(){
+  try{
+    var r=await fetch('/api/status');
+    var j=await r.json();
+    var ph=document.getElementById('pv_human');
+    if(ph)ph.textContent=j.human?'yes':'no';
+    var pvh=document.getElementById('pv_hr');
+    if(pvh)pvh.textContent=j.hr_ok?j.hr.toFixed(1):'n/a';
+    var pvb=document.getElementById('pv_br');
+    if(pvb)pvb.textContent=j.br_ok?j.br.toFixed(1):'n/a';
+  }catch(e){}
+}
+setInterval(portalRadarPoll,800);
+portalRadarPoll();
 })();
 </script>
 </body>
@@ -470,9 +494,10 @@ static const char kDashPage[] = R"HTML(
 <div class="card"><div>Heart (BPM)</div><div id="hr">--</div></div>
 <div class="card"><div>Breath (/min)</div><div id="br">--</div></div>
 <div class="card"><div>Distance (m)</div><div id="dist">--</div></div>
+<div class="card"><div>Person (radar)</div><div id="human">--</div></div>
 <div class="card"><div>State</div><div id="st">--</div></div>
 </div>
-<p class="meta">Primary SMS in <span id="tp">--</span>s · Family SMS in <span id="tf">--</span>s</p>
+<p class="meta">Alarms require <strong>person detected</strong> plus low vitals (debounce). Primary SMS in <span id="tp">--</span>s · Family SMS in <span id="tf">--</span>s</p>
 <p class="meta">SMS consent (NVS): <span id="optin">--</span></p>
 <p class="meta">WiFi: <span id="wf">--</span></p>
 <p class="ver" id="fwver">%%MEDALERT_FW_LINE%%</p>
@@ -484,6 +509,8 @@ async function poll(){
   document.getElementById('hr').textContent=(j.hr_ok?j.hr.toFixed(1):'n/a');
   document.getElementById('br').textContent=(j.br_ok?j.br.toFixed(1):'n/a');
   document.getElementById('dist').textContent=(j.dist_ok?j.dist.toFixed(2):'n/a');
+  var hum=document.getElementById('human');
+  if(hum)hum.textContent=j.human?'yes':'no';
   document.getElementById('st').textContent=j.state;
   document.getElementById('tp').textContent=j.to_primary_s||0;
   document.getElementById('tf').textContent=j.to_family_s||0;
@@ -649,6 +676,12 @@ static void startPortal() {
 
   g_dns.start(53, "*", sip);
 
+  g_server.on("/api/status", HTTP_GET, sendJsonStatus);
+  g_server.on("/api/alarm/cancel", HTTP_POST, []() {
+    alarmCancel();
+    g_last_sms_error = "";
+    g_server.send(200, "application/json", "{\"ok\":true}");
+  });
   g_server.on("/", HTTP_GET, handlePortalRoot);
   g_server.on("/generate_204", HTTP_GET, handlePortalRoot);  // Android captive probe
   g_server.on("/hotspot-detect.html", HTTP_GET, handlePortalRoot);  // Apple
