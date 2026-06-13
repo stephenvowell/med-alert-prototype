@@ -6,7 +6,7 @@ Firmware for a **bedside-style vitals watcher** built from a **Seeed XIAO ESP32-
 
 > **Not a medical device.** Not cleared for diagnosis or treatment. For **lab / demo / engineering evaluation** only, with appropriate clinical and legal oversight.
 
-**Future direction (draft):** A v2 program outline—cellular backup, monitored escalation, regulatory path—is in [`docs/V2-ROADMAP.md`](docs/V2-ROADMAP.md). Edit that file with your counsel and partners.
+**Future direction (draft):** A v2 program outline—cellular backup, monitored escalation, regulatory path—is in [`docs/V2-ROADMAP.md`](docs/V2-ROADMAP.md). Edit that file with your counsel and partners. A candidate **Alexa / Matter** integration feature set (safety announcements, reassurance queries, baby-monitor persona) is drafted in [`docs/ALEXA-FEATURES.md`](docs/ALEXA-FEATURES.md).
 
 **End-user instructions:** Step-by-step setup, form fields, dashboard, alarm timeline, and troubleshooting are in [`docs/USER-GUIDE.md`](docs/USER-GUIDE.md) (for caregivers, installers, and demos). **UI reference figures** (SVG wireframes of the setup portal and LAN dashboard) live in [`docs/images/`](docs/images/).
 
